@@ -1,0 +1,15 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:c="using:Markwardt.ClarityJournal.Client"
+             x:Class="Markwardt.ClarityJournal.Client.MainView"
+             x:CompileBindings="False">
+  <UserControl.DataTemplates>
+    <DataTemplate DataType="c:ConnectViewModel">
+      <c:ConnectView />
+    </DataTemplate>
+    <DataTemplate DataType="c:SessionViewModel">
+      <c:SessionView />
+    </DataTemplate>
+  </UserControl.DataTemplates>
+  <ContentControl Content="{Binding Current}" HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch" />
+</UserControl>

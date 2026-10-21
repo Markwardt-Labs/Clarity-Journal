@@ -1,0 +1,55 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:c="using:Markwardt.ClarityJournal.Client"
+             x:Class="Markwardt.ClarityJournal.Client.SessionView"
+             x:CompileBindings="False">
+  <Border Background="{DynamicResource ScreenGradient}" TextElement.Foreground="White">
+    <Grid RowDefinitions="Auto,*,Auto">
+      <Border Classes="banner" IsVisible="{Binding IsDisconnected}">
+        <TextBlock Text="Connection lost. Reconnecting..." HorizontalAlignment="Center" FontSize="13" />
+      </Border>
+      <Grid Grid.Row="1">
+        <Panel IsVisible="{Binding IsJournal}">
+          <c:JournalView DataContext="{Binding Journal}" />
+        </Panel>
+        <Panel IsVisible="{Binding IsSummaries}">
+          <c:SummariesView DataContext="{Binding Summaries}" />
+        </Panel>
+        <Panel IsVisible="{Binding IsChat}">
+          <c:ChatView DataContext="{Binding Chat}" />
+        </Panel>
+        <Panel IsVisible="{Binding IsSettings}">
+          <c:SettingsView />
+        </Panel>
+      </Grid>
+      <Border Grid.Row="2" Classes="tabbar">
+        <Grid ColumnDefinitions="*,*,*,*">
+          <Button Grid.Column="0" Classes="tab" Classes.on="{Binding IsJournal}" Command="{Binding SelectTabCommand}" CommandParameter="{x:Static c:AppTab.Journal}">
+            <StackPanel Spacing="2">
+              <Path Classes="icon" Data="{StaticResource JournalIconGeometry}" HorizontalAlignment="Center" />
+              <TextBlock Text="Journal" />
+            </StackPanel>
+          </Button>
+          <Button Grid.Column="1" Classes="tab" Classes.on="{Binding IsSummaries}" Command="{Binding SelectTabCommand}" CommandParameter="{x:Static c:AppTab.Summaries}">
+            <StackPanel Spacing="2">
+              <Path Classes="icon" Data="{StaticResource SummariesIconGeometry}" HorizontalAlignment="Center" />
+              <TextBlock Text="Summary" />
+            </StackPanel>
+          </Button>
+          <Button Grid.Column="2" Classes="tab" Classes.on="{Binding IsChat}" Command="{Binding SelectTabCommand}" CommandParameter="{x:Static c:AppTab.Chat}">
+            <StackPanel Spacing="2">
+              <Path Classes="icon" Data="{StaticResource ChatIconGeometry}" HorizontalAlignment="Center" />
+              <TextBlock Text="Ask" />
+            </StackPanel>
+          </Button>
+          <Button Grid.Column="3" Classes="tab" Classes.on="{Binding IsSettings}" Command="{Binding SelectTabCommand}" CommandParameter="{x:Static c:AppTab.Settings}">
+            <StackPanel Spacing="2">
+              <Path Classes="icon" Data="{StaticResource SettingsIconGeometry}" HorizontalAlignment="Center" />
+              <TextBlock Text="Options" />
+            </StackPanel>
+          </Button>
+        </Grid>
+      </Border>
+    </Grid>
+  </Border>
+</UserControl>

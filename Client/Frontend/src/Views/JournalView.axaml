@@ -1,0 +1,67 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="Markwardt.ClarityJournal.Client.JournalView"
+             x:CompileBindings="False">
+  <Border Classes="card" Margin="20">
+    <Grid RowDefinitions="Auto,*,Auto">
+      <Grid ColumnDefinitions="44,*,44">
+        <Button Grid.Column="1" Classes="dateButton" Command="{Binding ToggleCalendarCommand}">
+          <TextBlock Text="{Binding SelectedTitle}" FontWeight="Bold" FontSize="19" TextAlignment="Center" />
+        </Button>
+        <Panel Grid.Column="2" IsVisible="{Binding IsEntryOpen}">
+          <Panel IsVisible="{Binding CanEdit}">
+            <Button Classes="mic onCard" Classes.recording="{Binding Dictation.IsRecording}" Command="{Binding Dictation.Command}" IsVisible="{Binding Dictation.CanDictate}" ToolTip.Tip="{Binding Dictation.Tip}">
+              <Path Classes="icon rose" Data="{StaticResource MicIconGeometry}" />
+            </Button>
+          </Panel>
+        </Panel>
+      </Grid>
+
+      <TextBox Grid.Row="1" Classes="editor" Text="{Binding EntryText}" IsReadOnly="{Binding IsReadOnly}" IsVisible="{Binding IsEntryOpen}" PlaceholderText="What happened today? How did it feel?" VerticalAlignment="Stretch" VerticalContentAlignment="Top" ScrollViewer.VerticalScrollBarVisibility="Auto" Margin="0,8,0,0" />
+
+      <ScrollViewer Grid.Row="1" IsVisible="{Binding IsCalendarOpen}" VerticalScrollBarVisibility="Auto" Margin="0,8,0,0">
+        <StackPanel Spacing="8">
+          <Grid ColumnDefinitions="Auto,*,Auto">
+            <Button Classes="round" Command="{Binding PreviousMonthCommand}">
+              <Path Classes="icon ink" Data="{StaticResource PreviousIconGeometry}" />
+            </Button>
+            <TextBlock Grid.Column="1" Text="{Binding MonthTitle}" FontWeight="Bold" FontSize="17" HorizontalAlignment="Center" VerticalAlignment="Center" />
+            <Button Grid.Column="2" Classes="round" Command="{Binding NextMonthCommand}">
+              <Path Classes="icon ink" Data="{StaticResource NextIconGeometry}" />
+            </Button>
+          </Grid>
+          <ItemsControl ItemsSource="{Binding Weekdays}">
+            <ItemsControl.ItemsPanel>
+              <ItemsPanelTemplate>
+                <UniformGrid Columns="7" />
+              </ItemsPanelTemplate>
+            </ItemsControl.ItemsPanel>
+            <ItemsControl.ItemTemplate>
+              <DataTemplate>
+                <TextBlock Text="{Binding}" FontWeight="Bold" FontSize="12" HorizontalAlignment="Center" Margin="0,4" />
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+          <ItemsControl ItemsSource="{Binding Days}">
+            <ItemsControl.ItemsPanel>
+              <ItemsPanelTemplate>
+                <UniformGrid Columns="7" />
+              </ItemsPanelTemplate>
+            </ItemsControl.ItemsPanel>
+            <ItemsControl.ItemTemplate>
+              <DataTemplate>
+                <Button Classes="day" Classes.outside="{Binding !InMonth}" Classes.entry="{Binding HasEntry}" Classes.today="{Binding IsToday}" Classes.selected="{Binding IsSelected}" Command="{Binding Select}" Content="{Binding Label}" Margin="0,2" />
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+        </StackPanel>
+      </ScrollViewer>
+
+      <StackPanel Grid.Row="2" Margin="0,8,0,0">
+        <Border Classes="errorBar onCard" IsVisible="{Binding HasError}">
+          <TextBlock Text="{Binding Error}" Classes="error" />
+        </Border> 
+      </StackPanel>
+    </Grid>
+  </Border>
+</UserControl>

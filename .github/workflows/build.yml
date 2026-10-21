@@ -1,0 +1,174 @@
+name: Build
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Release version to publish (e.g. 1.2.3)"
+        required: true
+
+# Avoids redundant runs piling up on the same ref, and cancels superseded PR runs since those are safe to
+# throw away mid-run.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: "10.0.x"
+          cache: true
+          cache-dependency-path: "**/packages.lock.json"
+
+      - name: Install Android workload
+        run: dotnet workload install android
+
+      # RestoreLockedMode fails fast if packages.lock.json (also what the setup-dotnet cache key above is
+      # keyed on) doesn't match what the project references, instead of silently re-resolving and drifting.
+      - name: Build
+        run: dotnet build -p:RestoreLockedMode=true
+
+      # Only checks - never fixes or commits. The verification steps in AGENTS.md apply formatting fixes
+      # and the coverage badge locally, to be committed and pushed before dispatching a publish.
+      - name: Verify formatting
+        run: dotnet format --verify-no-changes
+
+      - name: Test
+        run: dotnet test Tests/Tests.csproj --configuration Debug
+
+  publish:
+    needs: build-and-test
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: write
+    steps:
+      # Dispatching this workflow already requires write access, but publishing is significant enough to
+      # gate further: only proceed if whoever dispatched it has Admin permission on the repo. Org owners
+      # always show up as Admin here too, so this alone covers both repo Admins and org Owners.
+      - name: Ensure publisher has admin access
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          PERMISSION=$(gh api "repos/${{ github.repository }}/collaborators/${{ github.actor }}/permission" --jq .permission)
+          if [ "$PERMISSION" != "admin" ]; then
+            echo "::error::${{ github.actor }} has '$PERMISSION' permission, not 'admin'. Only repo Admins/org Owners may publish."
+            exit 1
+          fi
+
+      # workflow_dispatch can be run against any branch/tag that contains this workflow file - without this
+      # check dispatching from a non-main ref would silently publish code that was never reviewed on main.
+      - name: Ensure publish runs from main
+        if: github.ref != 'refs/heads/main'
+        run: |
+          echo "::error::Publish must be dispatched from main (got '${{ github.ref }}')."
+          exit 1
+
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: "10.0.x"
+          cache: true
+          cache-dependency-path: "**/packages.lock.json"
+
+      # Server.csproj carries no <Version> of its own - the version always comes from the "version" input to
+      # this workflow, and this step fails the run rather than falling back to any default if it's missing
+      # or malformed. The matching GitHub Release/tag is expected to already exist - Scripts/Publish.cs
+      # creates it locally (as an Admin, since a tag ruleset blocks GITHUB_TOKEN from creating one here).
+      - name: Determine release version
+        id: version
+        env:
+          # Passed through env instead of interpolated directly into the script below - this input is
+          # arbitrary free text, and GitHub expressions are substituted textually before the shell runs, so
+          # interpolating it inline would let a crafted "version" break out of the string and inject commands.
+          VERSION_INPUT: ${{ github.event.inputs.version }}
+        run: |
+          VERSION="$VERSION_INPUT"
+          if ! [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z][0-9A-Za-z.-]*)?$ ]]; then
+            echo "::error::Version '$VERSION' is not a valid version (expected e.g. 1.2.3)."
+            exit 1
+          fi
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Install Android workload
+        run: dotnet workload install android
+
+      # The APK is signed with the release keystore kept in repository secrets (keystore base64-encoded, one
+      # password for store and key, alias "clarityjournal"); the "env:" prefix makes the Android build read the
+      # passwords from the environment instead of the command line.
+      - name: Restore Android keystore
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+        run: |
+          if [ -z "$ANDROID_KEYSTORE_BASE64" ]; then
+            echo "::error::The ANDROID_KEYSTORE_BASE64 secret is not set."
+            exit 1
+          fi
+          echo "$ANDROID_KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/release.keystore"
+
+      - name: Publish server and app
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+        run: |
+          for rid in win-x64 linux-x64; do
+            dotnet publish Server/Server.csproj --configuration Release --runtime $rid --output publish/server-$rid -p:RestoreLockedMode=true -p:Version=$VERSION
+          done
+          dotnet publish Client/Mobile/Mobile.csproj --configuration Release --output publish/mobile -p:AndroidPackageFormat=apk -p:RestoreLockedMode=true -p:Version=$VERSION -p:AndroidKeyStore=true -p:AndroidSigningKeyStore="$RUNNER_TEMP/release.keystore" -p:AndroidSigningKeyAlias=clarityjournal -p:AndroidSigningStorePass=env:ANDROID_KEYSTORE_PASSWORD -p:AndroidSigningKeyPass=env:ANDROID_KEYSTORE_PASSWORD
+
+      # Without signing properties the Android build quietly signs with a debug key, so check the finished APK
+      # itself: it must exist, must not carry the Android debug certificate and must be signed by exactly the
+      # release keystore.
+      - name: Verify APK is signed with the release keystore
+        env:
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+        run: |
+          APK="publish/mobile/com.markwardt.clarityjournal-Signed.apk"
+          if [ ! -f "$APK" ]; then
+            echo "::error::$APK was not built."
+            exit 1
+          fi
+          APKSIGNER=$(find "${ANDROID_HOME:-$ANDROID_SDK_ROOT}/build-tools" -name apksigner | sort -V | tail -1)
+          CERTS=$("$APKSIGNER" verify --print-certs "$APK")
+          echo "$CERTS"
+          if echo "$CERTS" | grep -qi "Android Debug"; then
+            echo "::error::The APK is signed with the Android debug certificate."
+            exit 1
+          fi
+          ACTUAL=$(echo "$CERTS" | grep -m1 "certificate SHA-256 digest" | awk '{print $NF}' | tr 'A-Z' 'a-z')
+          EXPECTED=$(keytool -list -keystore "$RUNNER_TEMP/release.keystore" -storepass:env ANDROID_KEYSTORE_PASSWORD -alias clarityjournal | grep "SHA-256" | awk '{print $NF}' | tr -d ':' | tr 'A-Z' 'a-z')
+          if [ -z "$ACTUAL" ] || [ "$ACTUAL" != "$EXPECTED" ]; then
+            echo "::error::The APK is not signed with the release keystore (signer $ACTUAL, keystore $EXPECTED)."
+            exit 1
+          fi
+          echo "APK signed with the release keystore ($ACTUAL)."
+
+      # The release asset names must be unique and say which app and platform they are for.
+      - name: Stage release assets
+        run: |
+          mkdir assets
+          cp publish/server-win-x64/Markwardt.ClarityJournal.Server.exe assets/ClarityJournal-Server-win.exe
+          cp publish/server-linux-x64/Markwardt.ClarityJournal.Server assets/ClarityJournal-Server-linux
+          cp publish/mobile/com.markwardt.clarityjournal-Signed.apk assets/ClarityJournal.apk
+          cp THIRD-PARTY-NOTICES.txt assets/
+
+      - name: Upload release assets
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release upload "${{ steps.version.outputs.version }}" assets/*
+          gh release view "${{ steps.version.outputs.version }}" --json assets --jq '.assets[].name' | grep -qx "ClarityJournal.apk" || { echo "::error::The APK is not attached to the release."; exit 1; }

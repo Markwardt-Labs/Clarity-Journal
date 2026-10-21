@@ -1,0 +1,16 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="Markwardt.ClarityJournal.Client.SettingsView"
+             x:CompileBindings="False">
+  <ScrollViewer VerticalScrollBarVisibility="Auto">
+    <StackPanel Margin="20,24,20,20" Spacing="16">
+      <Border Classes="card">
+        <StackPanel Spacing="14">
+          <TextBlock Text="{Binding Server}" FontWeight="Bold" FontSize="18" HorizontalAlignment="Center" TextAlignment="Center" />
+          <Button Content="Disconnect" Classes="pill accent" Command="{Binding DisconnectCommand}" HorizontalAlignment="Stretch" />
+        </StackPanel>
+      </Border>
+      <TextBlock Text="{Binding Version}" Classes="soft" FontSize="12" HorizontalAlignment="Center" />
+    </StackPanel>
+  </ScrollViewer>
+</UserControl>

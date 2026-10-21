@@ -1,0 +1,59 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:c="using:Markwardt.ClarityJournal.Client"
+             x:Class="Markwardt.ClarityJournal.Client.ChatView"
+             x:CompileBindings="False">
+  <Panel>
+    <Grid RowDefinitions="Auto,*,Auto" Margin="20,24,20,16">
+      <Button Classes="iconButton" Command="{Binding AskClearCommand}" HorizontalAlignment="Right" Margin="0,0,0,12" ToolTip.Tip="Clear chat">
+        <Path Classes="icon light" Data="{StaticResource TrashIconGeometry}" />
+      </Button>
+
+      <ScrollViewer Grid.Row="1" x:Name="Scroller" VerticalScrollBarVisibility="Auto">
+        <StackPanel Spacing="12">
+          <ItemsControl ItemsSource="{Binding Messages}">
+            <ItemsControl.ItemTemplate>
+              <DataTemplate>
+                <Border Classes="bubble" Classes.user="{Binding IsUser}" Margin="0,0,0,12">
+                  <Panel>
+                    <TextBlock Text="{Binding Text}" TextWrapping="Wrap" FontSize="15" IsVisible="{Binding IsUser}" />
+                    <c:MarkdownView Source="{Binding Text}" IsVisible="{Binding IsAssistant}" />
+                  </Panel>
+                </Border>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+          <Border Classes="bubble" IsVisible="{Binding IsWorking}">
+            <TextBlock Text="Reading your journal..." Classes="muted" />
+          </Border>
+          <Border Classes="errorBar" IsVisible="{Binding HasError}">
+            <TextBlock Text="{Binding Error}" Classes="error" />
+          </Border>
+        </StackPanel>
+      </ScrollViewer>
+
+      <Grid Grid.Row="2" ColumnDefinitions="*,Auto,Auto" ColumnSpacing="10" Margin="0,12,0,0">
+        <TextBox Classes="composer" Text="{Binding Draft}" PlaceholderText="Ask about your journal" />
+        <Button Grid.Column="1" Classes="mic" Classes.recording="{Binding Dictation.IsRecording}" Command="{Binding Dictation.Command}" IsVisible="{Binding Dictation.CanDictate}" VerticalAlignment="Bottom" ToolTip.Tip="{Binding Dictation.Tip}">
+          <Path Classes="icon rose" Data="{StaticResource MicIconGeometry}" />
+        </Button>
+        <Button Grid.Column="2" Classes="send" Command="{Binding SendCommand}" VerticalAlignment="Bottom">
+          <Path Classes="icon rose" Data="{StaticResource SendIconGeometry}" />
+        </Button>
+      </Grid>
+    </Grid>
+
+    <Border Classes="scrim" IsVisible="{Binding IsConfirmingClear}">
+      <Border Classes="card dialog" Margin="32" MaxWidth="320" VerticalAlignment="Center" HorizontalAlignment="Center">
+        <StackPanel Spacing="8">
+          <TextBlock Text="Clear this chat?" FontWeight="Bold" FontSize="19" HorizontalAlignment="Center" />
+          <TextBlock Text="The whole conversation will be deleted." Classes="muted" TextWrapping="Wrap" TextAlignment="Center" />
+          <Grid ColumnDefinitions="*,*" ColumnSpacing="10" Margin="0,12,0,0">
+            <Button Content="Cancel" Classes="plain" Command="{Binding CancelClearCommand}" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" />
+            <Button Grid.Column="1" Content="Clear" Classes="pill accent" Command="{Binding ClearCommand}" Padding="0,11" HorizontalAlignment="Stretch" />
+          </Grid>
+        </StackPanel>
+      </Border>
+    </Border>
+  </Panel>
+</UserControl>

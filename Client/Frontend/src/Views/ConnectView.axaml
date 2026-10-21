@@ -1,0 +1,31 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="Markwardt.ClarityJournal.Client.ConnectView"
+             x:CompileBindings="False">
+  <Border Background="{DynamicResource WelcomeGradient}" TextElement.Foreground="White">
+    <ScrollViewer VerticalScrollBarVisibility="Auto">
+      <StackPanel MaxWidth="420" Margin="32,56,32,32" Spacing="12" VerticalAlignment="Center">
+        <Border Classes="logo" HorizontalAlignment="Center" Margin="0,0,0,12">
+          <Path Classes="icon rose" Data="{StaticResource JournalIconGeometry}" Height="48" HorizontalAlignment="Center" VerticalAlignment="Center" />
+        </Border>
+        <TextBlock Text="Clarity Journal" Classes="title" HorizontalAlignment="Center" />
+        <TextBlock Text="Welcome to your personal journal" Classes="soft" HorizontalAlignment="Center" Margin="0,0,0,20" />
+
+        <TextBlock Text="Server host" Classes="label" />
+        <TextBox Classes="underline" Text="{Binding Host}" PlaceholderText="192.168.1.20" />
+        <TextBlock Text="Port" Classes="label" Margin="0,8,0,0" />
+        <TextBox Classes="underline" Text="{Binding Port}" PlaceholderText="52681" />
+        <TextBlock Text="Access key" Classes="label" Margin="0,8,0,0" />
+        <TextBox Classes="underline" Text="{Binding AccessKey}" PasswordChar="&#8226;" />
+
+        <Border Classes="errorBar" IsVisible="{Binding HasError}" Margin="0,12,0,0">
+          <TextBlock Text="{Binding Error}" Classes="error" />
+        </Border>
+        <Button Content="Trust new certificate" Command="{Binding TrustCommand}" Classes="ghost" IsVisible="{Binding CertificateChanged}" HorizontalAlignment="Stretch" />
+        <Button Content="Connect" Command="{Binding ConnectCommand}" Classes="pill" HorizontalAlignment="Stretch" Margin="0,24,0,0" />
+        <ProgressBar IsIndeterminate="True" IsVisible="{Binding IsBusy}" />
+        <TextBlock Text="{Binding Version}" Classes="soft" FontSize="12" HorizontalAlignment="Center" Margin="0,20,0,0" />
+      </StackPanel>
+    </ScrollViewer>
+  </Border>
+</UserControl>

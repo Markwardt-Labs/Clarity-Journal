@@ -1,0 +1,42 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:c="using:Markwardt.ClarityJournal.Client"
+             x:Class="Markwardt.ClarityJournal.Client.SummariesView"
+             x:CompileBindings="False">
+  <ScrollViewer VerticalScrollBarVisibility="Auto">
+    <StackPanel Margin="20,24,20,20" Spacing="16">
+      <Border Classes="segmented">
+        <ItemsControl ItemsSource="{Binding Kinds}">
+          <ItemsControl.ItemsPanel>
+            <ItemsPanelTemplate>
+              <UniformGrid Rows="1" />
+            </ItemsPanelTemplate>
+          </ItemsControl.ItemsPanel>
+          <ItemsControl.ItemTemplate>
+            <DataTemplate>
+              <Button Classes="segment" Classes.on="{Binding IsSelected}" Command="{Binding Select}" Content="{Binding Label}" />
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+      </Border>
+
+      <Border Classes="errorBar" IsVisible="{Binding HasError}">
+        <TextBlock Text="{Binding Error}" Classes="error" />
+      </Border>
+
+      <ItemsControl ItemsSource="{Binding Items}">
+        <ItemsControl.ItemTemplate>
+          <DataTemplate>
+            <Border Classes="card" Margin="0,0,0,14">
+              <StackPanel Spacing="4">
+                <TextBlock Text="{Binding Title}" FontWeight="Bold" FontSize="19" />
+                <TextBlock Text="{Binding Subtitle}" Classes="muted" FontSize="12" Margin="0,0,0,8" />
+                <c:MarkdownView Source="{Binding Text}" />
+              </StackPanel>
+            </Border>
+          </DataTemplate>
+        </ItemsControl.ItemTemplate>
+      </ItemsControl>
+    </StackPanel>
+  </ScrollViewer>
+</UserControl>
