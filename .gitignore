@@ -28,6 +28,10 @@ artifacts/
 .idea/
 *.DotSettings.user
 
+# Signing keys must never be committed (the release keystore lives in repository secrets)
+*.keystore
+*.jks
+
 # OS
 .DS_Store
 Thumbs.db

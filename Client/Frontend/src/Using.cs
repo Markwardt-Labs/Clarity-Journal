@@ -2,6 +2,7 @@ global using System.Collections.Concurrent;
 global using System.Collections.ObjectModel;
 global using System.ComponentModel;
 global using System.Globalization;
+global using System.Net.Security;
 global using System.Net.Sockets;
 global using System.Net.WebSockets;
 global using System.Reflection;

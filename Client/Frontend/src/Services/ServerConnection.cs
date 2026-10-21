@@ -21,7 +21,7 @@ internal interface IServerConnection : IAsyncDisposable
     event Action? Reconnected;
 
     /// <summary>
-    /// Gets the SHA-256 fingerprint of the certificate the server presented when the connection was opened.
+    /// Gets the SHA-256 fingerprint of the self-signed certificate the server presented when the connection was opened, which later connections must see again; empty when a public authority vouches for the certificate, which is then not pinned.
     /// </summary>
     string Fingerprint { get; }
 
@@ -112,7 +112,7 @@ internal interface IServerConnection : IAsyncDisposable
         /// <summary>
         /// Connects to the server and proves the access key.
         /// </summary>
-        /// <param name="settings">Where the server is and the key it requires; a fingerprint in it must match the server's certificate.</param>
+        /// <param name="settings">Where the server is and the key it requires; a fingerprint in it must match the server's certificate unless a public authority vouches for it.</param>
         /// <param name="cancellation">Cancels the connect.</param>
         /// <returns>The open connection.</returns>
         /// <exception cref="IOException">The server cannot be reached or closed the connection.</exception>
@@ -125,6 +125,8 @@ internal interface IServerConnection : IAsyncDisposable
     public sealed class Factory(IMessageChannel.IFactory channels, ILog log) : IFactory
     {
         private readonly TimeSpan timeout = TimeSpan.FromSeconds(10);
+
+        private readonly ICertificateTrust trust = new CertificateTrust();
 
         /// <inheritdoc />
         public async Task<IServerConnection> Connect(ConnectionSettings settings, CancellationToken cancellation)
@@ -151,15 +153,18 @@ internal interface IServerConnection : IAsyncDisposable
                 using CancellationTokenSource limit = CancellationTokenSource.CreateLinkedTokenSource(cancellation);
                 limit.CancelAfter(timeout);
                 string fingerprint = string.Empty;
-                socket.Options.RemoteCertificateValidationCallback = (_, certificate, _, _) =>
+                bool changed = false;
+                socket.Options.RemoteCertificateValidationCallback = (_, certificate, _, errors) =>
                 {
                     if (certificate is null)
                     {
                         return false;
                     }
 
-                    fingerprint = Convert.ToHexString(SHA256.HashData(certificate.GetRawCertData()));
-                    return settings.Fingerprint is null || string.Equals(settings.Fingerprint, fingerprint, StringComparison.OrdinalIgnoreCase);
+                    string presented = Convert.ToHexString(SHA256.HashData(certificate.GetRawCertData()));
+                    fingerprint = trust.Pin(presented, errors);
+                    changed = !trust.Accept(settings.Fingerprint, presented, errors);
+                    return !changed;
                 };
 
                 Uri address = new UriBuilder("wss", settings.Host, settings.Port).Uri;
@@ -171,12 +176,12 @@ internal interface IServerConnection : IAsyncDisposable
                 }
                 catch (WebSocketException exception)
                 {
-                    throw fingerprint.Length > 0 && settings.Fingerprint is not null && !string.Equals(settings.Fingerprint, fingerprint, StringComparison.OrdinalIgnoreCase)
+                    throw changed
                         ? new CertificateChangedException($"The certificate of {server} is not the one you first trusted. If you replaced the server's certificate, trust the new one.")
                         : new IOException($"Could not connect to {server}: {exception.InnerException?.Message ?? exception.Message}", exception);
                 }
 
-                log.Write($"WebSocket and TLS established with {server} (certificate SHA-256 {fingerprint})");
+                log.Write($"WebSocket and TLS established with {server} ({(fingerprint.Length == 0 ? "certificate trusted by a public authority" : $"self-signed certificate SHA-256 {fingerprint}")})");
                 stage = "the key handshake";
                 IMessageChannel channel = channels.Create(new WebSocketLineStream(socket));
                 await channel.Send(new HandshakeRequest { AccessKey = settings.AccessKey }, limit.Token);

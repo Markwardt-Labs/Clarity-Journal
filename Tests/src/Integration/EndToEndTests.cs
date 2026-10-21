@@ -179,7 +179,7 @@ public sealed class EndToEndTests : IAsyncLifetime
 
         await using TestServer third = await TestServer.Start(claude, At("2026-10-31T12:00:00Z"), folder.Path, null);
         IServerConnection three = await Open(third);
-        await Until(async () => (await three.GetSummaries(SummaryKind.Week, CancellationToken.None)).Count == 2);
+        await Until(async () => (await three.GetSummaries(SummaryKind.Lifetime, CancellationToken.None)).Single().Text != lifetimeBefore);
 
         List<ClaudeRequest> later = [.. claude.Requests.Skip(4)];
         Assert.Equal(4, later.Count);
