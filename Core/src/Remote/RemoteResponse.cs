@@ -16,9 +16,9 @@ public sealed record RemoteResponse
     public string? Error { get; init; }
 
     /// <summary>
-    /// Gets the entries answering <see cref="RemoteCommand.ListEntries" />, oldest first.
+    /// Gets the page answering <see cref="RemoteCommand.ListDigests" />, newest day first.
     /// </summary>
-    public IReadOnlyList<JournalEntry>? Entries { get; init; }
+    public IReadOnlyList<EntryDigest>? Digests { get; init; }
 
     /// <summary>
     /// Gets the entry answering <see cref="RemoteCommand.GetEntry" /> or <see cref="RemoteCommand.SaveEntry" />; empty for a <see cref="RemoteCommand.GetEntry" /> of a day without one.

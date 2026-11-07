@@ -46,8 +46,8 @@ internal sealed class RequestHandler(IDatabase database, IJournalExport export, 
 
             switch (request.Command)
             {
-                case RemoteCommand.ListEntries:
-                    return response with { Entries = await journal.List(request.From, request.To, cancellation) };
+                case RemoteCommand.ListDigests:
+                    return response with { Digests = await journal.Digests(request.Before, request.Limit, cancellation) };
                 case RemoteCommand.GetEntry:
                     return response with { Entry = await journal.Get(Require(request.Date, "date"), cancellation) };
                 case RemoteCommand.SaveEntry:

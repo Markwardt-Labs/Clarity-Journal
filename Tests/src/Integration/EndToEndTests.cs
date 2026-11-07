@@ -53,8 +53,8 @@ public sealed class EndToEndTests : IAsyncLifetime
 
         Assert.Equal("First words.", saved.Text);
         Assert.Equal("Replaced words.", (await connection.GetEntry(Day("2026-10-16"), CancellationToken.None))!.Text);
-        Assert.Equal([("2026-10-14", "Wednesday."), ("2026-10-16", "Replaced words.")], (await connection.ListEntries(Day("2026-10-01"), Day("2026-10-31"), CancellationToken.None)).Select(entry => (entry.Date.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture), entry.Text)));
-        Assert.Single(await connection.ListEntries(Day("2026-10-15"), null, CancellationToken.None));
+        Assert.Equal([("2026-10-16", "Replaced words."), ("2026-10-14", "Wednesday.")], (await connection.ListDigests(null, 50, CancellationToken.None)).Select(digest => (digest.Date.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture), digest.Excerpt)));
+        Assert.Equal([Day("2026-10-14")], (await connection.ListDigests(Day("2026-10-16"), 50, CancellationToken.None)).Select(digest => digest.Date));
 
         await connection.DeleteEntry(Day("2026-10-14"), CancellationToken.None);
         Assert.Null(await connection.GetEntry(Day("2026-10-14"), CancellationToken.None));
@@ -256,6 +256,116 @@ public sealed class EndToEndTests : IAsyncLifetime
         await Until(async () => (await retry.GetSummaries(SummaryKind.Lifetime, CancellationToken.None)).Count == 1);
 
         Assert.Single(await retry.GetSummaries(SummaryKind.Week, CancellationToken.None));
+    }
+
+    private async Task<IReadOnlyList<EntryDigest>> Digests(IServerConnection open) => await open.ListDigests(null, 50, CancellationToken.None);
+
+    [Fact]
+    public async Task Titles_AreWrittenAtStartupForEveryFinishedDayThatLacksOneButNeverForToday()
+    {
+        using TempFolder folder = new();
+
+        await using (TestServer first = await TestServer.Start(claude, At("2026-10-21T08:00:00Z"), folder.Path))
+        {
+            IServerConnection one = await Open(first);
+            await one.SaveEntry(Day("2026-10-16"), "Ran 5k.", CancellationToken.None);
+            await one.SaveEntry(Day("2026-10-20"), "Rested.", CancellationToken.None);
+            await one.SaveEntry(Day("2026-10-21"), "Still writing today.", CancellationToken.None);
+        }
+
+        Assert.Empty(claude.TitleRequests);
+
+        await using TestServer second = await TestServer.Start(claude, At("2026-10-21T12:00:00Z"), folder.Path, null, true);
+        IServerConnection two = await Open(second);
+        await Until(async () => (await Digests(two)).Count(digest => digest.Title is not null) == 2);
+
+        Dictionary<DateOnly, EntryDigest> byDay = (await Digests(two)).ToDictionary(digest => digest.Date);
+        Assert.Equal(("Title of 2026-10-16", "Summary of 2026-10-16."), (byDay[Day("2026-10-16")].Title, byDay[Day("2026-10-16")].Summary));
+        Assert.Equal("Title of 2026-10-20", byDay[Day("2026-10-20")].Title);
+        Assert.Null(byDay[Day("2026-10-21")].Title);
+        Assert.Equal("Still writing today.", byDay[Day("2026-10-21")].Excerpt);
+        Assert.Equal(2, claude.TitleRequests.Count);
+        Assert.DoesNotContain(claude.TitleRequests, request => request.Prompt.Contains("Still writing today.", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public async Task Titles_AreWrittenWhenAnEntrysDayEndsWhileTheServerRuns_AndTheAppIsToldOfEach()
+    {
+        ManualTimeProvider time = new(DateTimeOffset.Parse("2026-10-21T12:00:00Z", CultureInfo.InvariantCulture));
+        await using TestServer running = await TestServer.Start(claude, time, null, null, true);
+        IServerConnection one = await Open(running);
+        EventLog log = new(one);
+        await one.SaveEntry(Day("2026-10-21"), "A day that is still going.", CancellationToken.None);
+        await Task.Delay(100);
+        Assert.Empty(claude.TitleRequests);
+        Assert.Null((await Digests(one)).Single().Title);
+
+        time.Advance(TimeSpan.FromHours(12) + TimeSpan.FromSeconds(10));
+        await Until(async () => (await Digests(one)).Single().Title is not null);
+
+        Assert.Equal("Title of 2026-10-21", (await Digests(one)).Single().Title);
+        RemoteEvent titled = await log.Next(remoteEvent => remoteEvent is { Kind: RemoteEventKind.EntryChanged, Digest.Title: not null });
+        Assert.Equal(Day("2026-10-21"), titled.Date);
+        Assert.Equal("Summary of 2026-10-21.", titled.Digest!.Summary);
+        Assert.Single(claude.TitleRequests);
+
+        time.Advance(TimeSpan.FromHours(24));
+        await Task.Delay(100);
+        Assert.Single(claude.TitleRequests);
+    }
+
+    [Fact]
+    public async Task Titles_AnEditedPastEntryLosesItsTitleAndGetsANewOneAtTheNextDayChange_AnUnchangedOneKeepsIt()
+    {
+        using TempFolder folder = new();
+
+        await using (TestServer first = await TestServer.Start(claude, At("2026-10-17T08:00:00Z"), folder.Path))
+        {
+            await (await Open(first)).SaveEntry(Day("2026-10-16"), "Ran 5k.", CancellationToken.None);
+        }
+
+        ManualTimeProvider time = new(DateTimeOffset.Parse("2026-10-22T12:00:00Z", CultureInfo.InvariantCulture));
+        await using TestServer second = await TestServer.Start(claude, time, folder.Path, null, true);
+        IServerConnection two = await Open(second);
+        await Until(async () => (await Digests(two)).Single().Title is not null);
+
+        await two.SaveEntry(Day("2026-10-16"), "Ran 5k.", CancellationToken.None);
+        Assert.Equal("Title of 2026-10-16", (await Digests(two)).Single().Title);
+
+        await two.SaveEntry(Day("2026-10-16"), "Ran 10k instead.", CancellationToken.None);
+        Assert.Null((await Digests(two)).Single().Title);
+        Assert.Equal("Ran 10k instead.", (await Digests(two)).Single().Excerpt);
+
+        time.Advance(TimeSpan.FromHours(12) + TimeSpan.FromSeconds(10));
+        await Until(async () => (await Digests(two)).Single().Title is not null);
+
+        Assert.Equal(2, claude.TitleRequests.Count);
+        Assert.Contains("Ran 10k instead.", claude.TitleRequests[1].Prompt);
+    }
+
+    [Fact]
+    public async Task Titles_WhenClaudeFailsTheyAreTriedAgainAnHourLater()
+    {
+        using TempFolder folder = new();
+
+        await using (TestServer first = await TestServer.Start(claude, At("2026-10-17T08:00:00Z"), folder.Path))
+        {
+            await (await Open(first)).SaveEntry(Day("2026-10-16"), "Ran 5k.", CancellationToken.None);
+        }
+
+        claude.Failure = new ClaudeException("not logged in");
+        ManualTimeProvider time = new(DateTimeOffset.Parse("2026-10-22T12:00:00Z", CultureInfo.InvariantCulture));
+        await using TestServer second = await TestServer.Start(claude, time, folder.Path, null, true);
+        IServerConnection two = await Open(second);
+        await Until(() => Task.FromResult(claude.TitleRequests.Count == 1));
+        await Task.Delay(100);
+        Assert.Null((await Digests(two)).Single().Title);
+
+        claude.Failure = null;
+        time.Advance(TimeSpan.FromHours(1));
+        await Until(async () => (await Digests(two)).Single().Title is not null);
+
+        Assert.Equal(2, claude.TitleRequests.Count);
     }
 
     [Fact]

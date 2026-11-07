@@ -4,16 +4,16 @@ The shared surface is the wire protocol in `Core`: a handshake followed by reque
 
 ## Shape
 
-One request type, `RemoteRequest`, carries a `RemoteCommand` and the few optional fields any command needs (a date, a range, a kind, a text). One response type, `RemoteResponse`, has one optional field per kind of answer plus an `Error`. The alternative, a request and response class per command, was rejected because the command set is small and flat, so a single pair keeps the client's connection class a list of one-line wrappers and keeps the JSON trivial to read in a log. The trade-off is that a field only means something for some commands, which each command's documentation states.
+One request type, `RemoteRequest`, carries a `RemoteCommand` and the few optional fields any command needs (a date, a page, a kind, a text). One response type, `RemoteResponse`, has one optional field per kind of answer plus an `Error`. The alternative, a request and response class per command, was rejected because the command set is small and flat, so a single pair keeps the client's connection class a list of one-line wrappers and keeps the JSON trivial to read in a log. The trade-off is that a field only means something for some commands, which each command's documentation states.
 
-Models are plain records: `JournalEntry` (one per day, keyed by `Date`), `Summary` (a kind and a period identifier), `ChatMessage` and `ChatHistory`. `SummaryKind.PeriodOf` is the one place that knows how a day maps to its week (Monday to Sunday), month, year or the single lifetime period, so the server groups entries and the app labels them from the same rule.
+Models are plain records: `JournalEntry` (one per day, keyed by `Date`), `EntryDigest` (what a list shows of a day), `Summary` (a kind and a period identifier), `ChatMessage` and `ChatHistory`. `SummaryKind.PeriodOf` is the one place that knows how a day maps to its week (Monday to Sunday), month, year or the single lifetime period, so the server groups entries and the app labels them from the same rule.
 
 ## Flow
 
 1. The client opens a secure WebSocket to the server's port and sends a `HandshakeRequest` with the access key as the first line.
 2. The server answers with a `HandshakeResponse`. A wrong key or a malformed line gets `accepted: false` and the connection is closed; only a client that sends nothing within five seconds is closed without a reply.
 3. The client sends `RemoteRequest` lines. Each carries a client-chosen `Id` and may overlap with others; the matching `RemoteResponse` echoes the `Id`, and a failure is an `Error` string, never a closed connection.
-4. The server pushes `RemoteResponse` lines with `Id` zero and an `Event` to every connected client: an entry changed, summaries changed, a chat message arrived, Claude Code started or stopped answering, the chat was cleared or trimmed, or a run failed.
+4. The server pushes `RemoteResponse` lines with `Id` zero and an `Event` to every connected client: an entry changed (saved, deleted or given a title), summaries changed, a chat message arrived, Claude Code started or stopped answering, the chat was cleared or trimmed, or a run failed.
 
 ## Slow work returns at once
 
@@ -22,6 +22,12 @@ Models are plain records: `JournalEntry` (one per day, keyed by `Date`), `Summar
 ## Summaries have no command to run them
 
 Clients can only read summaries (`GetSummaries`). The server writes them by itself every Friday evening and when it starts after a missed Friday, and announces each written summary with `SummariesChanged`; a failed run is announced with `Failed`.
+
+## Listing entries
+
+`ListDigests` lists the days that have an entry, newest first, one page at a time: the `Limit` newest days before `Before` (the newest days when it is absent; 50 when `Limit` is absent, never more than 200). A page shorter than the limit is the last. An `EntryDigest` carries the date, the generated title and summary, and the start of the text on one line, but not the text, so a page of fifty days stays small however long the entries are, and a journal of decades never meets the message size limit. The title and summary are absent while the entry has none: the server writes them for a day only once it is over (see Entry titles), and writes them again after the text changed.
+
+`EntryChanged` carries the new digest of the day (absent when the entry was deleted) in the same push for all three causes, a save, a delete and a generated title, so a client that shows a list patches that one row from the event without asking again. A save of the same text keeps the title; a save of different text clears it.
 
 ## Voice input
 

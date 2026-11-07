@@ -232,4 +232,135 @@ public sealed class StoreTests : IAsyncLifetime
         await meta.Remove("k", CancellationToken.None);
         Assert.Null(await meta.Get("k", CancellationToken.None));
     }
+
+    [Fact]
+    public async Task Digests_ListNewestFirstOnePageAtATimeWithTheStartOfTheText()
+    {
+        foreach (string date in new[] { "2026-10-12", "2026-10-14", "2026-10-13", "2026-10-15" })
+        {
+            await entries.Save(Day(date), $"Entry of {date}\n\nwith   a second line", at, CancellationToken.None);
+        }
+
+        IReadOnlyList<EntryDigest> first = await entries.ListDigests(null, 2, CancellationToken.None);
+        IReadOnlyList<EntryDigest> second = await entries.ListDigests(first[^1].Date, 2, CancellationToken.None);
+
+        Assert.Equal([Day("2026-10-15"), Day("2026-10-14")], first.Select(digest => digest.Date));
+        Assert.Equal([Day("2026-10-13"), Day("2026-10-12")], second.Select(digest => digest.Date));
+        Assert.Equal("Entry of 2026-10-15 with a second line", first[0].Excerpt);
+        Assert.All(first.Concat(second), digest => Assert.True(digest.Title is null && digest.Summary is null));
+        Assert.Empty(await entries.ListDigests(Day("2026-10-12"), 50, CancellationToken.None));
+    }
+
+    [Fact]
+    public async Task Digests_LongTextIsCutToAShortExcerpt()
+    {
+        await entries.Save(Day("2026-10-15"), string.Join(' ', Enumerable.Repeat("word", 400)), at, CancellationToken.None);
+
+        EntryDigest digest = (await entries.GetDigest(Day("2026-10-15"), CancellationToken.None))!;
+
+        Assert.EndsWith("...", digest.Excerpt, StringComparison.Ordinal);
+        Assert.InRange(digest.Excerpt.Length, 100, 163);
+        Assert.Null(await entries.GetDigest(Day("2026-10-01"), CancellationToken.None));
+    }
+
+    [Fact]
+    public async Task SetDigest_StoresTheTitleAndSummaryAndShowsThemInTheDigest()
+    {
+        await entries.Save(Day("2026-10-15"), "Cooked pasta", at, CancellationToken.None);
+
+        Assert.True(await entries.SetDigest(Day("2026-10-15"), "Cooked pasta", "Pasta night", "You cooked for friends.", CancellationToken.None));
+
+        EntryDigest digest = (await entries.GetDigest(Day("2026-10-15"), CancellationToken.None))!;
+        Assert.Equal(("Pasta night", "You cooked for friends.", "Cooked pasta"), (digest.Title, digest.Summary, digest.Excerpt));
+        Assert.Equal("Pasta night", (await entries.ListDigests(null, 10, CancellationToken.None)).Single().Title);
+    }
+
+    [Fact]
+    public async Task SetDigest_IsRefusedWhenTheTextChangedWhileTheTitleWasBeingMade()
+    {
+        await entries.Save(Day("2026-10-15"), "Old words", at, CancellationToken.None);
+        await entries.Save(Day("2026-10-15"), "New words", at, CancellationToken.None);
+
+        Assert.False(await entries.SetDigest(Day("2026-10-15"), "Old words", "Stale", "Stale.", CancellationToken.None));
+        Assert.False(await entries.SetDigest(Day("2026-10-01"), "x", "No entry", "No entry.", CancellationToken.None));
+
+        Assert.Null((await entries.GetDigest(Day("2026-10-15"), CancellationToken.None))!.Title);
+    }
+
+    [Fact]
+    public async Task SetDigest_IsNotASaveSoSummariesDoNotReadTheEntryAgain()
+    {
+        await entries.Save(Day("2026-10-15"), "Cooked pasta", at, CancellationToken.None);
+        long revision = await entries.LatestRevision(CancellationToken.None);
+
+        await entries.SetDigest(Day("2026-10-15"), "Cooked pasta", "Pasta night", "You cooked.", CancellationToken.None);
+
+        Assert.Equal(revision, await entries.LatestRevision(CancellationToken.None));
+        Assert.Equal(revision, Assert.Single(await entries.ListSince(0, revision, CancellationToken.None)).Revision);
+    }
+
+    [Fact]
+    public async Task Save_ChangedTextClearsTheTitleButTheSameTextKeepsIt()
+    {
+        await entries.Save(Day("2026-10-15"), "Cooked pasta", at, CancellationToken.None);
+        await entries.SetDigest(Day("2026-10-15"), "Cooked pasta", "Pasta night", "You cooked.", CancellationToken.None);
+
+        await entries.Save(Day("2026-10-15"), "Cooked pasta", at.AddMinutes(1), CancellationToken.None);
+        Assert.Equal("Pasta night", (await entries.GetDigest(Day("2026-10-15"), CancellationToken.None))!.Title);
+
+        await entries.Save(Day("2026-10-15"), "Cooked pasta and baked bread", at.AddMinutes(2), CancellationToken.None);
+        EntryDigest digest = (await entries.GetDigest(Day("2026-10-15"), CancellationToken.None))!;
+        Assert.Null(digest.Title);
+        Assert.Null(digest.Summary);
+    }
+
+    [Fact]
+    public async Task ListUntitled_IsDaysBeforeTheGivenDayWithoutBothTitleAndSummaryNewestFirst()
+    {
+        foreach (string date in new[] { "2026-10-12", "2026-10-13", "2026-10-14", "2026-10-15", "2026-10-16" })
+        {
+            await entries.Save(Day(date), $"Text {date}", at, CancellationToken.None);
+        }
+
+        await entries.SetDigest(Day("2026-10-13"), "Text 2026-10-13", "Done", "Done.", CancellationToken.None);
+
+        IReadOnlyList<JournalEntry> untitled = await entries.ListUntitled(Day("2026-10-16"), CancellationToken.None);
+
+        Assert.Equal([Day("2026-10-15"), Day("2026-10-14"), Day("2026-10-12")], untitled.Select(entry => entry.Date));
+        Assert.Equal("Text 2026-10-15", untitled[0].Text);
+    }
+
+    [Fact]
+    public async Task Initialize_AddsTheTitleColumnsToADatabaseMadeByAnOlderVersionKeepingItsEntries()
+    {
+        using TempFolder old = new();
+        string path = Path.Combine(old.Path, "journal.db");
+
+        await using (SqliteConnection connection = new(new SqliteConnectionStringBuilder { DataSource = path }.ToString()))
+        {
+            await connection.OpenAsync();
+            await using SqliteCommand create = connection.CreateCommand();
+            create.CommandText = """
+                CREATE TABLE entries (date TEXT NOT NULL PRIMARY KEY, text TEXT NOT NULL, revision INTEGER NOT NULL, updated_at TEXT NOT NULL);
+                CREATE TABLE meta (key TEXT NOT NULL PRIMARY KEY, value TEXT NOT NULL);
+                INSERT INTO meta (key, value) VALUES ('revision', '2');
+                INSERT INTO entries VALUES ('2026-10-23', 'An entry from before titles existed', 1, '2026-10-23T20:00:00.0000000+00:00');
+                INSERT INTO entries VALUES ('2026-10-24', 'Another old entry', 2, '2026-10-24T20:00:00.0000000+00:00');
+                """;
+            await create.ExecuteNonQueryAsync();
+        }
+
+        Database migrated = new();
+        await migrated.Initialize(old.Path, CancellationToken.None);
+        await migrated.Initialize(old.Path, CancellationToken.None);
+        EntryStore migratedEntries = new(migrated);
+
+        Assert.Equal("An entry from before titles existed", (await migratedEntries.Get(Day("2026-10-23"), CancellationToken.None))!.Text);
+        Assert.Equal(2, await migratedEntries.LatestRevision(CancellationToken.None));
+        Assert.Equal([Day("2026-10-24"), Day("2026-10-23")], (await migratedEntries.ListUntitled(Day("2026-11-06"), CancellationToken.None)).Select(entry => entry.Date));
+        Assert.True(await migratedEntries.SetDigest(Day("2026-10-23"), "An entry from before titles existed", "Before titles", "You wrote before titles.", CancellationToken.None));
+        Assert.Equal("Before titles", (await migratedEntries.GetDigest(Day("2026-10-23"), CancellationToken.None))!.Title);
+        await migratedEntries.Save(Day("2026-10-25"), "A new entry", at, CancellationToken.None);
+        Assert.Equal(3, await migratedEntries.LatestRevision(CancellationToken.None));
+    }
 }

@@ -5,7 +5,7 @@
   <Border Classes="card" Margin="20">
     <Grid RowDefinitions="Auto,*,Auto">
       <Grid ColumnDefinitions="44,*,44">
-        <Button Grid.Column="1" Classes="dateButton" Command="{Binding ToggleCalendarCommand}">
+        <Button Grid.Column="1" Classes="dateButton" Command="{Binding ToggleListCommand}">
           <TextBlock Text="{Binding SelectedTitle}" FontWeight="Bold" FontSize="19" TextAlignment="Center" />
         </Button>
         <Panel Grid.Column="2" IsVisible="{Binding IsEntryOpen}">
@@ -19,49 +19,25 @@
 
       <TextBox Grid.Row="1" Classes="editor" Text="{Binding EntryText}" IsReadOnly="{Binding IsReadOnly}" IsVisible="{Binding IsEntryOpen}" PlaceholderText="What happened today? How did it feel?" VerticalAlignment="Stretch" VerticalContentAlignment="Top" ScrollViewer.VerticalScrollBarVisibility="Auto" Margin="0,8,0,0" />
 
-      <ScrollViewer Grid.Row="1" IsVisible="{Binding IsCalendarOpen}" VerticalScrollBarVisibility="Auto" Margin="0,8,0,0">
-        <StackPanel Spacing="8">
-          <Grid ColumnDefinitions="Auto,*,Auto">
-            <Button Classes="round" Command="{Binding PreviousMonthCommand}">
-              <Path Classes="icon ink" Data="{StaticResource PreviousIconGeometry}" />
-            </Button>
-            <TextBlock Grid.Column="1" Text="{Binding MonthTitle}" FontWeight="Bold" FontSize="17" HorizontalAlignment="Center" VerticalAlignment="Center" />
-            <Button Grid.Column="2" Classes="round" Command="{Binding NextMonthCommand}">
-              <Path Classes="icon ink" Data="{StaticResource NextIconGeometry}" />
-            </Button>
-          </Grid>
-          <ItemsControl ItemsSource="{Binding Weekdays}">
-            <ItemsControl.ItemsPanel>
-              <ItemsPanelTemplate>
-                <UniformGrid Columns="7" />
-              </ItemsPanelTemplate>
-            </ItemsControl.ItemsPanel>
-            <ItemsControl.ItemTemplate>
-              <DataTemplate>
-                <TextBlock Text="{Binding}" FontWeight="Bold" FontSize="12" HorizontalAlignment="Center" Margin="0,4" />
-              </DataTemplate>
-            </ItemsControl.ItemTemplate>
-          </ItemsControl>
-          <ItemsControl ItemsSource="{Binding Days}">
-            <ItemsControl.ItemsPanel>
-              <ItemsPanelTemplate>
-                <UniformGrid Columns="7" />
-              </ItemsPanelTemplate>
-            </ItemsControl.ItemsPanel>
-            <ItemsControl.ItemTemplate>
-              <DataTemplate>
-                <Button Classes="day" Classes.outside="{Binding !InMonth}" Classes.entry="{Binding HasEntry}" Classes.today="{Binding IsToday}" Classes.selected="{Binding IsSelected}" Command="{Binding Select}" Content="{Binding Label}" Margin="0,2" />
-              </DataTemplate>
-            </ItemsControl.ItemTemplate>
-          </ItemsControl>
-        </StackPanel>
+      <ScrollViewer Grid.Row="1" IsVisible="{Binding IsListOpen}" VerticalScrollBarVisibility="Auto" Margin="0,8,0,0" ScrollChanged="OnScrollChanged">
+        <ItemsControl ItemsSource="{Binding Rows}">
+          <ItemsControl.ItemTemplate>
+            <DataTemplate>
+              <Button Classes="entryRow" Classes.selected="{Binding IsSelected}" Command="{Binding Select}" Margin="0,0,0,8">
+                <StackPanel Spacing="2">
+                  <TextBlock Text="{Binding DateLabel}" Opacity="0.65" FontSize="12" FontWeight="SemiBold" />
+                  <TextBlock Text="{Binding Heading}" IsVisible="{Binding HasHeading}" FontWeight="Bold" FontSize="16" TextWrapping="Wrap" />
+                  <TextBlock Text="{Binding Body}" Opacity="0.8" FontSize="13" TextWrapping="Wrap" MaxLines="2" TextTrimming="CharacterEllipsis" />
+                </StackPanel>
+              </Button>
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
       </ScrollViewer>
 
-      <StackPanel Grid.Row="2" Margin="0,8,0,0">
-        <Border Classes="errorBar onCard" IsVisible="{Binding HasError}">
-          <TextBlock Text="{Binding Error}" Classes="error" />
-        </Border> 
-      </StackPanel>
+      <Border Grid.Row="2" Classes="errorBar onCard" IsVisible="{Binding HasError}" Margin="0,8,0,0">
+        <TextBlock Text="{Binding Error}" Classes="error" />
+      </Border>
     </Grid>
   </Border>
 </UserControl>

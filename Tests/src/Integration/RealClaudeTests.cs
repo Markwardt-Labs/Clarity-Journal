@@ -51,6 +51,33 @@ public sealed class RealClaudeTests(Xunit.Abstractions.ITestOutputHelper output)
     }
 
     [Fact]
+    public async Task Titles_TheRealCommandWritesAShortTitleAndSummaryForEachFinishedDay()
+    {
+        if (!enabled)
+        {
+            return;
+        }
+
+        EntryStore entries = new(database);
+        EntryTitler titler = new(entries, runner, prompts, export, new EventHub(), new FixedTimeProvider(new DateTimeOffset(2026, 10, 17, 12, 0, 0, TimeSpan.Zero)), Mock.Of<ILog>());
+
+        Assert.True(await titler.Run(config, CancellationToken.None));
+
+        IReadOnlyList<EntryDigest> digests = await entries.ListDigests(null, 10, CancellationToken.None);
+        Assert.Equal(2, digests.Count);
+
+        foreach (EntryDigest digest in digests)
+        {
+            output.WriteLine($"{digest.Date}: {digest.Title} | {digest.Summary}");
+            Assert.False(string.IsNullOrWhiteSpace(digest.Title));
+            Assert.False(string.IsNullOrWhiteSpace(digest.Summary));
+            Assert.InRange(digest.Title!.Split(' ').Length, 1, 10);
+            Assert.InRange(digest.Summary!.Length, 10, 300);
+            Assert.DoesNotContain('{', digest.Title);
+        }
+    }
+
+    [Fact]
     public async Task Chat_TheRealCommandAnswersFromTheFilesAndKeepsItsSession()
     {
         if (!enabled)

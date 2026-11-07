@@ -41,4 +41,24 @@ public sealed class PromptsTests
         Assert.Contains("entries/<year>/<yyyy-MM-dd>.md", prompts.ChatSystem);
         Assert.Contains("summaries/lifetime.md", prompts.ChatSystem);
     }
+
+    [Fact]
+    public void TitleSystem_AsksForOnlyAJsonObjectWithAShortTitleAndAShortSummaryInTheSecondPerson()
+    {
+        Assert.Contains("\"title\"", prompts.TitleSystem);
+        Assert.Contains("\"summary\"", prompts.TitleSystem);
+        Assert.Contains("nothing else", prompts.TitleSystem);
+        Assert.Contains("two to six words", prompts.TitleSystem);
+        Assert.Contains("one or two short sentences", prompts.TitleSystem);
+        Assert.Contains("second person", prompts.TitleSystem);
+    }
+
+    [Fact]
+    public void Title_NamesTheDayAndGivesTheWholeEntry()
+    {
+        string prompt = prompts.Title(Entry("2026-10-16", "Ran 5k.\nSlept well."));
+
+        Assert.Contains("2026-10-16 (Friday)", prompt);
+        Assert.EndsWith("Ran 5k.\nSlept well.", prompt, StringComparison.Ordinal);
+    }
 }

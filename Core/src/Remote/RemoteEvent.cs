@@ -11,9 +11,14 @@ public sealed record RemoteEvent
     public required RemoteEventKind Kind { get; init; }
 
     /// <summary>
-    /// Gets the day whose entry was saved or deleted, for <see cref="RemoteEventKind.EntryChanged" />.
+    /// Gets the day whose entry changed, for <see cref="RemoteEventKind.EntryChanged" />.
     /// </summary>
     public DateOnly? Date { get; init; }
+
+    /// <summary>
+    /// Gets what a list shows of the entry after the change, for <see cref="RemoteEventKind.EntryChanged" />; <see langword="null" /> when the entry was deleted.
+    /// </summary>
+    public EntryDigest? Digest { get; init; }
 
     /// <summary>
     /// Gets the added message, for <see cref="RemoteEventKind.ChatMessageAdded" />.
@@ -38,7 +43,7 @@ public sealed record RemoteEvent
 public enum RemoteEventKind
 {
     /// <summary>
-    /// An entry was saved or deleted, possibly from another device.
+    /// An entry was saved or deleted, possibly from another device, or the server generated its title and summary.
     /// </summary>
     EntryChanged,
 

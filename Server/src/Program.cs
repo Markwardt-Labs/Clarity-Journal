@@ -36,7 +36,7 @@ internal static class Program
         IRequestHandler requestHandler = new RequestHandler(database, export, new JournalService(entries, export, events, time), summaryStore, chat, new SpeechService(new WhisperEngine()));
         ISummaryScheduler scheduler = new SummaryScheduler(summarizer, summaryStore, schedule, time, log);
         IConnectionServer connectionServer = new ConnectionServer(new Handshake(), new IMessageChannel.Factory(), new WebSocketUpgrade(), new CertificateProvider(), requestHandler, events, log);
-        IApplication application = new Application(info, new ConfigLoader(), requestHandler, scheduler, new ChatRetention(chat, time, log), connectionServer, Console.Out);
+        IApplication application = new Application(info, new ConfigLoader(), requestHandler, scheduler, new ChatRetention(chat, time, log), new EntryTitleScheduler(new EntryTitler(entries, claude, prompts, export, events, time, log), time, log), connectionServer, Console.Out);
         return await application.Run(args, cancellation.Token);
     }
 }

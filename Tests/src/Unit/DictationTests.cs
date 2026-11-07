@@ -189,7 +189,7 @@ public sealed class DictationInScreensTests
         recorder.Setup(target => target.Start(It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
         recorder.Setup(target => target.Stop()).ReturnsAsync(new byte[32000]);
         connection.Setup(target => target.Transcribe(It.IsAny<ReadOnlyMemory<byte>>(), It.IsAny<CancellationToken>())).ReturnsAsync("hello there");
-        connection.Setup(target => target.ListEntries(It.IsAny<DateOnly?>(), It.IsAny<DateOnly?>(), It.IsAny<CancellationToken>())).ReturnsAsync([]);
+        connection.Setup(target => target.GetEntry(It.IsAny<DateOnly>(), It.IsAny<CancellationToken>())).ReturnsAsync((JournalEntry?)null);
         connection.Setup(target => target.GetSummaries(It.IsAny<SummaryKind>(), It.IsAny<CancellationToken>())).ReturnsAsync([]);
         connection.Setup(target => target.GetChat(It.IsAny<CancellationToken>())).ReturnsAsync(new ChatHistory { Messages = [], Working = false });
     }

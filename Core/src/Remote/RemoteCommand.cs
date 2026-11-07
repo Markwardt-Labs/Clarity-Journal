@@ -7,9 +7,9 @@ namespace Markwardt.ClarityJournal;
 public enum RemoteCommand
 {
     /// <summary>
-    /// Lists the entries between <see cref="RemoteRequest.From" /> and <see cref="RemoteRequest.To" />, answered in <see cref="RemoteResponse.Entries" />.
+    /// Lists the days that have an entry as <see cref="EntryDigest" />, newest first, one page at a time: the <see cref="RemoteRequest.Limit" /> newest days before <see cref="RemoteRequest.Before" />, answered in <see cref="RemoteResponse.Digests" />. A page shorter than the limit is the last one.
     /// </summary>
-    ListEntries,
+    ListDigests,
 
     /// <summary>
     /// Reads the entry of <see cref="RemoteRequest.Date" />, answered in <see cref="RemoteResponse.Entry" />, which is empty when the day has none.

@@ -16,6 +16,18 @@ internal interface IPrompts
     string ChatSystem { get; }
 
     /// <summary>
+    /// Gets the system prompt of a run that writes the title and summary of one journal entry.
+    /// </summary>
+    string TitleSystem { get; }
+
+    /// <summary>
+    /// Builds the prompt that asks for the title and summary of an entry.
+    /// </summary>
+    /// <param name="entry">The entry.</param>
+    /// <returns>The prompt.</returns>
+    string Title(JournalEntry entry);
+
+    /// <summary>
     /// Builds the prompt that updates the summary of a period.
     /// </summary>
     /// <param name="period">The period to summarize.</param>
@@ -40,6 +52,12 @@ internal sealed class Prompts : IPrompts
 
     /// <inheritdoc />
     public string ChatSystem { get; } = "You answer questions about the user's private journal. The journal is in the current folder: entries/<year>/<yyyy-MM-dd>.md holds the entry of each day that has one, summaries/lifetime.md summarizes everything, summaries/years/<yyyy>.md, summaries/months/<yyyy-MM>.md and summaries/weeks/<monday as yyyy-MM-dd>.md summarize a year, a month and a week. Start from the summaries for broad questions and read or search the entries for specifics. Ground every answer in these files and name the dates it comes from; when the journal does not say, say so instead of guessing. You can only read the journal and never change it. Answer in markdown, conversational and kind, and keep it short unless asked for detail.";
+
+    /// <inheritdoc />
+    public string TitleSystem { get; } = "You write a short title and a short summary for one entry of a person's private journal. Reply with only a JSON object of the form {\"title\": \"...\", \"summary\": \"...\"} and nothing else: no code fence and no remarks. The title has two to six words, no quotation marks and no final period, and says what the day was about, not what its date is. The summary is one or two short sentences, at most 35 words together, written to the person in the second person (\"You ...\"), and says only what the entry says.";
+
+    /// <inheritdoc />
+    public string Title(JournalEntry entry) => string.Create(CultureInfo.InvariantCulture, $"Write the title and the summary for the journal entry of {entry.Date:yyyy-MM-dd} ({entry.Date.DayOfWeek}).\n\nEntry:\n{entry.Text}");
 
     /// <inheritdoc />
     public string Summary(SummaryPeriod period, string? previous, IReadOnlyList<JournalEntry> entries)

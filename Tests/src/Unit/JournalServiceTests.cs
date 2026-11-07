@@ -79,13 +79,47 @@ public sealed class JournalServiceTests
     }
 
     [Fact]
-    public async Task ListAndGet_ReadFromTheStore()
+    public async Task Get_ReadsFromTheStore()
     {
         JournalEntry entry = new() { Date = new DateOnly(2026, 10, 16), Text = "x", UpdatedAt = now };
         entries.Setup(store => store.Get(new DateOnly(2026, 10, 16), It.IsAny<CancellationToken>())).ReturnsAsync(entry);
-        entries.Setup(store => store.List(new DateOnly(2026, 10, 1), null, It.IsAny<CancellationToken>())).ReturnsAsync([entry]);
 
         Assert.Same(entry, await service.Get(new DateOnly(2026, 10, 16), CancellationToken.None));
-        Assert.Equal([entry], await service.List(new DateOnly(2026, 10, 1), null, CancellationToken.None));
+    }
+
+    [Theory]
+    [InlineData(null, 50)]
+    [InlineData(10, 10)]
+    [InlineData(0, 1)]
+    [InlineData(-5, 1)]
+    [InlineData(200, 200)]
+    [InlineData(5000, 200)]
+    public async Task Digests_PagesWithADefaultAndALimitTheServerCaps(int? asked, int used)
+    {
+        EntryDigest digest = new() { Date = new DateOnly(2026, 10, 15), Excerpt = "x" };
+        entries.Setup(store => store.ListDigests(new DateOnly(2026, 10, 16), used, It.IsAny<CancellationToken>())).ReturnsAsync([digest]);
+
+        Assert.Equal([digest], await service.Digests(new DateOnly(2026, 10, 16), asked, CancellationToken.None));
+    }
+
+    [Fact]
+    public async Task Save_AnnouncesWhatAListShowsOfTheEntryIncludingATitleItKept()
+    {
+        EntryDigest digest = new() { Date = new DateOnly(2026, 10, 16), Title = "Kept title", Summary = "Kept summary.", Excerpt = "A good day." };
+        entries.Setup(store => store.GetDigest(new DateOnly(2026, 10, 16), It.IsAny<CancellationToken>())).ReturnsAsync(digest);
+
+        await service.Save(new DateOnly(2026, 10, 16), "A good day.", CancellationToken.None);
+
+        Assert.Same(digest, Assert.Single(published).Digest);
+    }
+
+    [Fact]
+    public async Task Delete_AnnouncesTheDayWithoutADigest()
+    {
+        entries.Setup(store => store.Delete(new DateOnly(2026, 10, 16), It.IsAny<CancellationToken>())).ReturnsAsync(true);
+
+        await service.Delete(new DateOnly(2026, 10, 16), CancellationToken.None);
+
+        Assert.Null(Assert.Single(published).Digest);
     }
 }

@@ -6,7 +6,7 @@ namespace Markwardt.ClarityJournal.Server;
 internal interface IDatabase
 {
     /// <summary>
-    /// Creates the database file and its tables when they do not exist yet.
+    /// Creates the database file and its tables when they do not exist yet, and adds the columns that a database made by an older version lacks, keeping what it holds.
     /// </summary>
     /// <param name="folder">The folder that holds the database file; created when missing.</param>
     /// <param name="cancellation">Cancels the setup.</param>
@@ -29,7 +29,9 @@ internal sealed class Database : IDatabase
             date TEXT NOT NULL PRIMARY KEY,
             text TEXT NOT NULL,
             revision INTEGER NOT NULL,
-            updated_at TEXT NOT NULL
+            updated_at TEXT NOT NULL,
+            title TEXT,
+            summary TEXT
         );
         CREATE INDEX IF NOT EXISTS entries_revision ON entries (revision);
         CREATE TABLE IF NOT EXISTS summaries (
@@ -70,6 +72,7 @@ internal sealed class Database : IDatabase
         await command.ExecuteNonQueryAsync(cancellation);
         command.CommandText = schema;
         await command.ExecuteNonQueryAsync(cancellation);
+        await Migrate(connection, cancellation);
     }
 
     /// <inheritdoc />
@@ -83,5 +86,28 @@ internal sealed class Database : IDatabase
         SqliteConnection connection = new(connectionString);
         await connection.OpenAsync(cancellation);
         return connection;
+    }
+
+    private async Task Migrate(SqliteConnection connection, CancellationToken cancellation)
+    {
+        List<string> columns = [];
+
+        await using (SqliteCommand info = connection.CreateCommand())
+        {
+            info.CommandText = "SELECT name FROM pragma_table_info('entries')";
+            await using SqliteDataReader reader = await info.ExecuteReaderAsync(cancellation);
+
+            while (await reader.ReadAsync(cancellation))
+            {
+                columns.Add(reader.GetString(0));
+            }
+        }
+
+        foreach (string column in new[] { "title", "summary" }.Where(name => !columns.Contains(name)))
+        {
+            await using SqliteCommand add = connection.CreateCommand();
+            add.CommandText = $"ALTER TABLE entries ADD COLUMN {column} TEXT";
+            await add.ExecuteNonQueryAsync(cancellation);
+        }
     }
 }

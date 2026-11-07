@@ -21,14 +21,14 @@ public sealed record RemoteRequest
     public DateOnly? Date { get; init; }
 
     /// <summary>
-    /// Gets the first day <see cref="RemoteCommand.ListEntries" /> includes, or <see langword="null" /> for no lower bound.
+    /// Gets the day before which <see cref="RemoteCommand.ListDigests" /> lists, or <see langword="null" /> to start with the newest day.
     /// </summary>
-    public DateOnly? From { get; init; }
+    public DateOnly? Before { get; init; }
 
     /// <summary>
-    /// Gets the last day <see cref="RemoteCommand.ListEntries" /> includes, or <see langword="null" /> for no upper bound.
+    /// Gets how many days <see cref="RemoteCommand.ListDigests" /> lists at most, or <see langword="null" /> for the server's default; the server caps it.
     /// </summary>
-    public DateOnly? To { get; init; }
+    public int? Limit { get; init; }
 
     /// <summary>
     /// Gets the kind of summaries <see cref="RemoteCommand.GetSummaries" /> lists.

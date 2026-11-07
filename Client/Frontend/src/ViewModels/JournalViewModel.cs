@@ -1,7 +1,7 @@
 namespace Markwardt.ClarityJournal.Client;
 
 /// <summary>
-/// The journal screen: today's entry, written and saved here, and a calendar that opens on demand to read the entry of an earlier day.
+/// The journal screen: today's entry, written and saved here, and a list of the days that have an entry, newest first, to read an earlier day from.
 /// </summary>
 internal sealed class JournalViewModel : ViewModelBase
 {
@@ -18,10 +18,7 @@ internal sealed class JournalViewModel : ViewModelBase
         this.today = today;
         this.time = time ?? TimeProvider.System;
         selected = today();
-        month = new DateOnly(selected.Year, selected.Month, 1);
-        ToggleCalendarCommand = new AsyncCommand(_ => ToggleCalendar());
-        PreviousMonthCommand = new AsyncCommand(_ => ChangeMonth(-1));
-        NextMonthCommand = new AsyncCommand(_ => ChangeMonth(1));
+        ToggleListCommand = new AsyncCommand(_ => ToggleList());
         Dictation = new Dictation(connection, recorder, () => CanEdit);
         Dictation.Dictated += text => EntryText = entryText.Length == 0 || char.IsWhiteSpace(entryText[^1]) ? entryText + text : $"{entryText} {text}";
         Dictation.Failed += message => Error = message;
@@ -35,15 +32,13 @@ internal sealed class JournalViewModel : ViewModelBase
 
     private readonly TimeSpan autoSaveInterval = TimeSpan.FromSeconds(5);
 
+    private readonly int pageSize = 50;
+
     private readonly SemaphoreSlim saving = new(1, 1);
 
     private readonly SynchronizationContext? context = SynchronizationContext.Current;
 
     private ITimer? autoSave;
-
-    private readonly Dictionary<DateOnly, JournalEntry> entries = [];
-
-    private DateOnly month;
 
     private DateOnly selected;
 
@@ -51,9 +46,13 @@ internal sealed class JournalViewModel : ViewModelBase
 
     private string savedText = string.Empty;
 
-    private bool isCalendarOpen;
+    private bool isListOpen;
 
-    private IReadOnlyList<CalendarDayViewModel> days = [];
+    private bool hasMoreRows;
+
+    private bool loadingMore;
+
+    private int rowsVersion;
 
     /// <summary>
     /// Gets the voice input of the entry, which adds what is said to the end of today's entry.
@@ -61,28 +60,19 @@ internal sealed class JournalViewModel : ViewModelBase
     public IDictation Dictation { get; }
 
     /// <summary>
-    /// Gets the short weekday names above the calendar, Monday first.
+    /// Gets the rows of the list of entries, newest first: today's row, which is always there, and a row for every earlier day that has an entry that has been loaded so far.
     /// </summary>
-    public IReadOnlyList<string> Weekdays { get; } = ["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"];
+    public ObservableCollection<EntryRowViewModel> Rows { get; } = [];
 
     /// <summary>
-    /// Gets the cells of the calendar, six weeks starting on a Monday.
+    /// Gets a value indicating whether the list of entries is shown instead of the entry.
     /// </summary>
-    public IReadOnlyList<CalendarDayViewModel> Days
+    public bool IsListOpen
     {
-        get => days;
-        private set => Set(ref days, value);
-    }
-
-    /// <summary>
-    /// Gets a value indicating whether the calendar is open.
-    /// </summary>
-    public bool IsCalendarOpen
-    {
-        get => isCalendarOpen;
+        get => isListOpen;
         private set
         {
-            if (Set(ref isCalendarOpen, value))
+            if (Set(ref isListOpen, value))
             {
                 Raise(nameof(IsEntryOpen));
             }
@@ -90,14 +80,14 @@ internal sealed class JournalViewModel : ViewModelBase
     }
 
     /// <summary>
-    /// Gets a value indicating whether the entry is shown, which is whenever the calendar is not: the screen shows one or the other.
+    /// Gets a value indicating whether the entry is shown, which is whenever the list is not: the screen shows one or the other.
     /// </summary>
-    public bool IsEntryOpen => !isCalendarOpen;
+    public bool IsEntryOpen => !isListOpen;
 
     /// <summary>
-    /// Gets the name of the month shown in the calendar, such as <c>October 2026</c>.
+    /// Gets a value indicating whether older days than the loaded rows are on the server.
     /// </summary>
-    public string MonthTitle => month.ToString("MMMM yyyy", CultureInfo.InvariantCulture);
+    public bool HasMoreRows => hasMoreRows;
 
     /// <summary>
     /// Gets the day shown.
@@ -125,11 +115,6 @@ internal sealed class JournalViewModel : ViewModelBase
     }
 
     /// <summary>
-    /// Gets a value indicating whether the shown day has an entry on the server.
-    /// </summary>
-    public bool HasEntry => entries.ContainsKey(selected);
-
-    /// <summary>
     /// Gets a value indicating whether the text differs from what the server has for the day.
     /// </summary>
     public bool IsDirty => entryText != savedText;
@@ -150,31 +135,21 @@ internal sealed class JournalViewModel : ViewModelBase
     public bool CanSave => CanEdit && IsDirty && !string.IsNullOrWhiteSpace(entryText);
 
     /// <summary>
-    /// Gets the command that flips between the entry and the calendar.
+    /// Gets the command that flips between the entry and the list of entries.
     /// </summary>
-    public AsyncCommand ToggleCalendarCommand { get; }
+    public AsyncCommand ToggleListCommand { get; }
 
     /// <summary>
-    /// Gets the command that shows the previous month.
+    /// Selects today, shows the entry and starts saving changed text every five seconds. Text typed and not yet sent is kept, so a connection that comes back never replaces it with what the server has.
     /// </summary>
-    public AsyncCommand PreviousMonthCommand { get; }
-
-    /// <summary>
-    /// Gets the command that shows the next month.
-    /// </summary>
-    public AsyncCommand NextMonthCommand { get; }
-
-    /// <summary>
-    /// Selects today, shows the entry, reads the month around today and starts saving changed text every five seconds.
-    /// </summary>
-    /// <returns>A task that completes once the entries are read or the read failed.</returns>
+    /// <returns>A task that completes once the entry is read or the read failed.</returns>
     public async Task Load()
     {
         selected = today();
-        month = new DateOnly(selected.Year, selected.Month, 1);
-        IsCalendarOpen = false;
+        IsListOpen = false;
         autoSave ??= time.CreateTimer(_ => Post(() => _ = Flush()), null, autoSaveInterval, autoSaveInterval);
-        await Refresh(true);
+        RaiseSelection();
+        await ReloadSelected();
     }
 
     /// <summary>
@@ -200,27 +175,93 @@ internal sealed class JournalViewModel : ViewModelBase
     }
 
     /// <summary>
+    /// Loads the next page of older days into the list, when there is one and none is being loaded.
+    /// </summary>
+    /// <returns>A task that completes once the page is added or the read failed.</returns>
+    public async Task LoadMore()
+    {
+        if (!hasMoreRows || loadingMore || Rows.Count == 0)
+        {
+            return;
+        }
+
+        loadingMore = true;
+        int version = rowsVersion;
+
+        try
+        {
+            IReadOnlyList<EntryDigest> page = [];
+            DateOnly before = Rows[^1].Date;
+
+            if (!await Attempt(async () => page = await connection.ListDigests(before, pageSize, CancellationToken.None)) || version != rowsVersion)
+            {
+                return;
+            }
+
+            hasMoreRows = page.Count >= pageSize;
+            Raise(nameof(HasMoreRows));
+
+            foreach (EntryDigest digest in page.Where(digest => digest.Date < before))
+            {
+                Rows.Add(NewRow(digest.Date, digest));
+            }
+        }
+        finally
+        {
+            loadingMore = false;
+        }
+    }
+
+    /// <summary>
     /// Reacts to an event pushed by the server.
     /// </summary>
     /// <param name="remoteEvent">The event.</param>
     /// <returns>A task that completes once the screen is up to date.</returns>
     public async Task Handle(RemoteEvent remoteEvent)
     {
-        if (remoteEvent.Kind == RemoteEventKind.EntryChanged)
+        if (remoteEvent is not { Kind: RemoteEventKind.EntryChanged, Date: { } date })
         {
-            await Refresh(remoteEvent.Date == selected && !IsDirty);
+            return;
+        }
+
+        if (IsListOpen)
+        {
+            ApplyToRows(date, remoteEvent.Digest);
+        }
+
+        if (date == selected && !IsDirty)
+        {
+            await ReloadSelected();
         }
     }
 
-    private DateOnly GridStart() => month.AddDays(-(((int)month.DayOfWeek + 6) % 7));
-
-    private bool IsSelectable(DateOnly date) => date == today() || (date < today() && entries.ContainsKey(date));
+    private EntryRowViewModel NewRow(DateOnly date, EntryDigest? digest)
+    {
+        EntryRowViewModel row = new(date, today(), date == selected, new AsyncCommand(_ => Select(date)));
+        row.Update(digest);
+        return row;
+    }
 
     private void RaiseEntryState()
     {
         Raise(nameof(IsDirty));
         Raise(nameof(CanSave));
-        Raise(nameof(HasEntry));
+    }
+
+    private void RaiseSelection()
+    {
+        Raise(nameof(SelectedDate));
+        Raise(nameof(SelectedTitle));
+        Raise(nameof(CanEdit));
+        Raise(nameof(IsReadOnly));
+        RaiseEntryState();
+
+        foreach (EntryRowViewModel row in Rows)
+        {
+            row.IsSelected = row.Date == selected;
+        }
+
+        Dictation.Refresh();
     }
 
     private void SetText(string text)
@@ -231,87 +272,111 @@ internal sealed class JournalViewModel : ViewModelBase
         RaiseEntryState();
     }
 
-    private void BuildDays()
+    private async Task ReloadSelected()
     {
-        DateOnly start = GridStart();
+        DateOnly date = selected;
+        JournalEntry? entry = null;
+
+        if (!await Attempt(async () => entry = await connection.GetEntry(date, CancellationToken.None)) || selected != date || IsDirty)
+        {
+            return;
+        }
+
+        SetText(entry?.Text ?? string.Empty);
+    }
+
+    private async Task ReloadRows()
+    {
+        IReadOnlyList<EntryDigest> page = [];
+
+        if (!await Attempt(async () => page = await connection.ListDigests(null, pageSize, CancellationToken.None)))
+        {
+            return;
+        }
+
+        rowsVersion++;
         DateOnly now = today();
-        List<CalendarDayViewModel> cells = [];
+        hasMoreRows = page.Count >= pageSize;
+        Raise(nameof(HasMoreRows));
+        Rows.Clear();
 
-        for (int index = 0; index < 42; index++)
+        foreach (EntryDigest digest in page.Where(digest => digest.Date <= now))
         {
-            DateOnly date = start.AddDays(index);
-            bool selectable = IsSelectable(date);
-            cells.Add(new CalendarDayViewModel(date, date.Month == month.Month, entries.ContainsKey(date), date == now, date == selected, selectable, new AsyncCommand(_ => Select(date), () => selectable)));
+            Rows.Add(NewRow(digest.Date, digest));
         }
 
-        Days = cells;
-        Raise(nameof(MonthTitle));
-        Raise(nameof(SelectedTitle));
-        Raise(nameof(SelectedDate));
-        Raise(nameof(CanEdit));
-        Raise(nameof(IsReadOnly));
-        Dictation.Refresh();
+        if (Rows.Count == 0 || Rows[0].Date != now)
+        {
+            Rows.Insert(0, NewRow(now, null));
+        }
     }
 
-    private async Task Refresh(bool reloadText)
+    private void ApplyToRows(DateOnly date, EntryDigest? digest)
     {
-        DateOnly start = GridStart();
-        IReadOnlyList<JournalEntry> listed = [];
-
-        if (!await Attempt(async () => listed = await connection.ListEntries(start, start.AddDays(41), CancellationToken.None)))
+        if (date > today())
         {
             return;
         }
 
-        entries.Clear();
+        EntryRowViewModel? row = Rows.FirstOrDefault(existing => existing.Date == date);
 
-        foreach (JournalEntry entry in listed)
+        if (row is not null)
         {
-            entries[entry.Date] = entry;
-        }
+            if (digest is null && !row.IsToday)
+            {
+                Rows.Remove(row);
+            }
+            else
+            {
+                row.Update(digest);
+            }
 
-        BuildDays();
-
-        if (reloadText)
-        {
-            SetText(entries.TryGetValue(selected, out JournalEntry? current) ? current.Text : string.Empty);
-        }
-        else
-        {
-            RaiseEntryState();
-        }
-    }
-
-    private async Task ToggleCalendar()
-    {
-        if (IsCalendarOpen)
-        {
-            IsCalendarOpen = false;
             return;
         }
 
-        month = new DateOnly(selected.Year, selected.Month, 1);
-        IsCalendarOpen = true;
-        await Refresh(false);
+        if (digest is null || (hasMoreRows && Rows.Count > 0 && date < Rows[^1].Date))
+        {
+            return;
+        }
+
+        Rows.Insert(Rows.TakeWhile(existing => existing.Date > date).Count(), NewRow(date, digest));
+    }
+
+    private async Task ToggleList()
+    {
+        if (IsListOpen)
+        {
+            IsListOpen = false;
+            return;
+        }
+
+        IsListOpen = true;
+        await Flush();
+        await ReloadRows();
     }
 
     private async Task Select(DateOnly date)
     {
-        if (!IsSelectable(date) || (CanSave && !await Store()))
+        if (date > today() || (CanSave && !await Store()))
         {
             return;
         }
 
-        selected = date;
-        month = new DateOnly(date.Year, date.Month, 1);
-        IsCalendarOpen = false;
-        await Refresh(true);
-    }
+        if (date != selected)
+        {
+            JournalEntry? entry = null;
 
-    private async Task ChangeMonth(int offset)
-    {
-        month = month.AddMonths(offset);
-        await Refresh(false);
+            if (!await Attempt(async () => entry = await connection.GetEntry(date, CancellationToken.None)))
+            {
+                return;
+            }
+
+            selected = date;
+            SetText(entry?.Text ?? string.Empty);
+        }
+
+        IsListOpen = false;
+        RaiseSelection();
     }
 
     private void Post(Action action)
@@ -346,8 +411,6 @@ internal sealed class JournalViewModel : ViewModelBase
                 return false;
             }
 
-            entries[date] = saved;
-
             if (selected == date && entryText == text)
             {
                 savedText = saved.Text;
@@ -355,7 +418,6 @@ internal sealed class JournalViewModel : ViewModelBase
                 Raise(nameof(EntryText));
             }
 
-            BuildDays();
             RaiseEntryState();
             return true;
         }

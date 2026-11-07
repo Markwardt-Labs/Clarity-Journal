@@ -147,6 +147,23 @@
       <Setter Property="Background" Value="#1A8E7CF0" />
       <Setter Property="TextElement.Foreground" Value="{DynamicResource Ink}" />
     </Style>
+    <Style Selector="Button.entryRow">
+      <Setter Property="Background" Value="{DynamicResource RowFill}" />
+      <Setter Property="Foreground" Value="{DynamicResource Ink}" />
+      <Setter Property="BorderBrush" Value="Transparent" />
+      <Setter Property="BorderThickness" Value="1.5" />
+      <Setter Property="CornerRadius" Value="16" />
+      <Setter Property="Padding" Value="14,10" />
+      <Setter Property="HorizontalAlignment" Value="Stretch" />
+      <Setter Property="HorizontalContentAlignment" Value="Left" />
+    </Style>
+    <Style Selector="Button.entryRow:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="Background" Value="{DynamicResource RowFillHover}" />
+      <Setter Property="TextElement.Foreground" Value="{DynamicResource Ink}" />
+    </Style>
+    <Style Selector="Button.entryRow.selected">
+      <Setter Property="BorderBrush" Value="{DynamicResource Rose}" />
+    </Style>
     <Style Selector="Button.plain">
       <Setter Property="Background" Value="Transparent" />
       <Setter Property="Foreground" Value="{DynamicResource InkMuted}" />
@@ -168,19 +185,6 @@
     <Style Selector="Button.plain.light:pointerover /template/ ContentPresenter#PART_ContentPresenter">
       <Setter Property="Background" Value="#33FFFFFF" />
       <Setter Property="TextElement.Foreground" Value="White" />
-    </Style>
-    <Style Selector="Button.round">
-      <Setter Property="Background" Value="Transparent" />
-      <Setter Property="BorderThickness" Value="0" />
-      <Setter Property="CornerRadius" Value="19" />
-      <Setter Property="Width" Value="38" />
-      <Setter Property="Height" Value="38" />
-      <Setter Property="Padding" Value="0" />
-      <Setter Property="HorizontalContentAlignment" Value="Center" />
-      <Setter Property="VerticalContentAlignment" Value="Center" />
-    </Style>
-    <Style Selector="Button.round:pointerover /template/ ContentPresenter#PART_ContentPresenter">
-      <Setter Property="Background" Value="#1A8E7CF0" />
     </Style>
     <Style Selector="Button.iconButton">
       <Setter Property="Background" Value="#33FFFFFF" />
@@ -302,47 +306,6 @@
     <Style Selector="Button.tab.on TextBlock">
       <Setter Property="Foreground" Value="{DynamicResource Rose}" />
     </Style>
-    <Style Selector="Button.day">
-      <Setter Property="Background" Value="Transparent" />
-      <Setter Property="Foreground" Value="{DynamicResource Ink}" />
-      <Setter Property="BorderBrush" Value="Transparent" />
-      <Setter Property="BorderThickness" Value="1.5" />
-      <Setter Property="CornerRadius" Value="19" />
-      <Setter Property="Width" Value="38" />
-      <Setter Property="Height" Value="38" />
-      <Setter Property="Padding" Value="0" />
-      <Setter Property="FontSize" Value="14" />
-      <Setter Property="HorizontalAlignment" Value="Center" />
-      <Setter Property="HorizontalContentAlignment" Value="Center" />
-      <Setter Property="VerticalContentAlignment" Value="Center" />
-    </Style>
-    <Style Selector="Button.day:pointerover /template/ ContentPresenter#PART_ContentPresenter">
-      <Setter Property="Background" Value="#1A8E7CF0" />
-    </Style>
-    <Style Selector="Button.day:disabled /template/ ContentPresenter#PART_ContentPresenter">
-      <Setter Property="Background" Value="Transparent" />
-      <Setter Property="TextElement.Foreground" Value="{DynamicResource Lilac}" />
-    </Style>
-    <Style Selector="Button.day.outside">
-      <Setter Property="Foreground" Value="{DynamicResource Lilac}" />
-    </Style>
-    <Style Selector="Button.day.entry">
-      <Setter Property="BorderBrush" Value="{DynamicResource Rose}" />
-    </Style>
-    <Style Selector="Button.day.today">
-      <Setter Property="FontWeight" Value="Bold" />
-      <Setter Property="Foreground" Value="{DynamicResource Violet}" />
-    </Style>
-    <Style Selector="Button.day.selected">
-      <Setter Property="Background" Value="{DynamicResource Rose}" />
-      <Setter Property="BorderBrush" Value="{DynamicResource Rose}" />
-      <Setter Property="Foreground" Value="White" />
-      <Setter Property="FontWeight" Value="Bold" />
-    </Style>
-    <Style Selector="Button.day.selected:pointerover /template/ ContentPresenter#PART_ContentPresenter">
-      <Setter Property="Background" Value="{DynamicResource Rose}" />
-      <Setter Property="TextElement.Foreground" Value="White" />
-    </Style>
 
     <Style Selector="TextBox.underline">
       <Setter Property="Background" Value="Transparent" />
@@ -407,10 +370,6 @@
       <Setter Property="Stroke" Value="White" />
       <Setter Property="Height" Value="20" />
     </Style>
-    <Style Selector="Path.icon.ink">
-      <Setter Property="Stroke" Value="{DynamicResource Ink}" />
-      <Setter Property="Height" Value="16" />
-    </Style>
     <Style Selector="Path.icon.rose">
       <Setter Property="Stroke" Value="{DynamicResource Rose}" />
       <Setter Property="Height" Value="20" />
@@ -439,6 +398,8 @@
       <SolidColorBrush x:Key="OnGradientSoft" Color="#E6FFFFFF" />
       <SolidColorBrush x:Key="CardFill" Color="#F7FFFFFF" />
       <SolidColorBrush x:Key="SoftFill" Color="#BDFFFFFF" />
+      <SolidColorBrush x:Key="RowFill" Color="#248E7CF0" />
+      <SolidColorBrush x:Key="RowFillHover" Color="#408E7CF0" />
       <SolidColorBrush x:Key="Lilac" Color="#CBBDEC" />
       <SolidColorBrush x:Key="Rose" Color="#EE7B9A" />
       <SolidColorBrush x:Key="Violet" Color="#8E7CF0" />
@@ -460,8 +421,6 @@
       <Geometry x:Key="SummariesIconGeometry">M7,1 L8.7,5.3 L13,7 L8.7,8.7 L7,13 L5.3,8.7 L1,7 L5.3,5.3 Z</Geometry>
       <Geometry x:Key="ChatIconGeometry">M2,2 L12,2 L12,9 L6.5,9 L4,11.8 L4,9 L2,9 Z</Geometry>
       <Geometry x:Key="SettingsIconGeometry">M2,4 L12,4 M2,10 L12,10 M5,2 L5,6 M9,8 L9,12</Geometry>
-      <Geometry x:Key="PreviousIconGeometry">M9,2 L4,7 L9,12</Geometry>
-      <Geometry x:Key="NextIconGeometry">M5,2 L10,7 L5,12</Geometry>
       <Geometry x:Key="TrashIconGeometry">M2.5,4 L11.5,4 M5,4 L5,2.5 L9,2.5 L9,4 M3.5,4 L4.2,12 L9.8,12 L10.5,4 M6,6 L6,10 M8,6 L8,10</Geometry>
       <Geometry x:Key="MicIconGeometry">M5.5,2 A1.5,1.5 0 0 1 8.5,2 L8.5,7 A1.5,1.5 0 0 1 5.5,7 Z M3,6.5 A4,4 0 0 0 11,6.5 M7,10.5 L7,13 M5,13 L9,13</Geometry>
       <Geometry x:Key="SendIconGeometry">M7,12 L7,2.5 M2.8,6.5 L7,2.5 L11.2,6.5</Geometry>

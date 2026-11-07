@@ -45,14 +45,26 @@ public sealed class RequestHandlerTests
     }
 
     [Fact]
-    public async Task Handle_ListEntries_ReturnsTheEntriesOfTheRange()
+    public async Task Handle_ListDigests_ReturnsThePageOfDays()
     {
-        journal.Setup(target => target.List(new DateOnly(2026, 10, 1), new DateOnly(2026, 10, 31), It.IsAny<CancellationToken>())).ReturnsAsync([entry]);
+        EntryDigest digest = new() { Date = new DateOnly(2026, 10, 15), Title = "Pasta night", Summary = "You cooked.", Excerpt = "Cooked pasta" };
+        journal.Setup(target => target.Digests(new DateOnly(2026, 10, 16), 20, It.IsAny<CancellationToken>())).ReturnsAsync([digest]);
 
-        RemoteResponse response = await Handle(new RemoteRequest { Id = 7, Command = RemoteCommand.ListEntries, From = new DateOnly(2026, 10, 1), To = new DateOnly(2026, 10, 31) });
+        RemoteResponse response = await Handle(new RemoteRequest { Id = 7, Command = RemoteCommand.ListDigests, Before = new DateOnly(2026, 10, 16), Limit = 20 });
 
         Assert.Equal(7, response.Id);
-        Assert.Equal([entry], response.Entries);
+        Assert.Equal([digest], response.Digests);
+    }
+
+    [Fact]
+    public async Task Handle_ListDigests_WithoutABoundOrLimitStartsWithTheNewestDays()
+    {
+        journal.Setup(target => target.Digests(null, null, It.IsAny<CancellationToken>())).ReturnsAsync([]);
+
+        RemoteResponse response = await Handle(new RemoteRequest { Id = 8, Command = RemoteCommand.ListDigests });
+
+        Assert.Empty(response.Digests!);
+        Assert.Null(response.Error);
     }
 
     [Fact]

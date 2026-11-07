@@ -15,7 +15,7 @@ public sealed class MainViewModelTests
     public MainViewModelTests()
     {
         connection.SetupGet(target => target.Fingerprint).Returns("ABCD");
-        connection.Setup(target => target.ListEntries(It.IsAny<DateOnly?>(), It.IsAny<DateOnly?>(), It.IsAny<CancellationToken>())).ReturnsAsync([]);
+        connection.Setup(target => target.GetEntry(It.IsAny<DateOnly>(), It.IsAny<CancellationToken>())).ReturnsAsync((JournalEntry?)null);
         connection.Setup(target => target.GetSummaries(It.IsAny<SummaryKind>(), It.IsAny<CancellationToken>())).ReturnsAsync([]);
         connection.Setup(target => target.GetChat(It.IsAny<CancellationToken>())).ReturnsAsync(new ChatHistory { Messages = [], Working = false });
         store.Setup(target => target.Load(It.IsAny<CancellationToken>())).ReturnsAsync(saved);
@@ -42,7 +42,7 @@ public sealed class MainViewModelTests
 
         SessionViewModel session = Assert.IsType<SessionViewModel>(model.Current);
         Assert.Equal("host:52681", session.Server);
-        connection.Verify(target => target.ListEntries(It.IsAny<DateOnly?>(), It.IsAny<DateOnly?>(), It.IsAny<CancellationToken>()), Times.Once);
+        connection.Verify(target => target.GetEntry(It.IsAny<DateOnly>(), It.IsAny<CancellationToken>()), Times.Once);
         connection.Verify(target => target.GetSummaries(SummaryKind.Week, It.IsAny<CancellationToken>()), Times.Once);
         connection.Verify(target => target.GetChat(It.IsAny<CancellationToken>()), Times.Once);
     }

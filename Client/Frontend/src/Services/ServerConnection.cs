@@ -33,13 +33,13 @@ internal interface IServerConnection : IAsyncDisposable
     Task Reconnect(CancellationToken cancellation);
 
     /// <summary>
-    /// Lists the entries between two days.
+    /// Lists what a list of entries shows of the days that have one, newest first, one page at a time.
     /// </summary>
-    /// <param name="from">The first day, or <see langword="null" /> for no lower bound.</param>
-    /// <param name="to">The last day, or <see langword="null" /> for no upper bound.</param>
+    /// <param name="before">The day before which days are listed, or <see langword="null" /> to start with the newest.</param>
+    /// <param name="limit">How many days at most.</param>
     /// <param name="cancellation">Cancels the wait.</param>
-    /// <returns>The entries, oldest first.</returns>
-    Task<IReadOnlyList<JournalEntry>> ListEntries(DateOnly? from, DateOnly? to, CancellationToken cancellation);
+    /// <returns>The digests, newest first; fewer than <paramref name="limit" /> means there are no older days.</returns>
+    Task<IReadOnlyList<EntryDigest>> ListDigests(DateOnly? before, int limit, CancellationToken cancellation);
 
     /// <summary>
     /// Reads the entry of a day.
@@ -291,7 +291,7 @@ internal sealed class ServerConnection : IServerConnection
     }
 
     /// <inheritdoc />
-    public async Task<IReadOnlyList<JournalEntry>> ListEntries(DateOnly? from, DateOnly? to, CancellationToken cancellation) => (await Send(new() { Id = 0, Command = RemoteCommand.ListEntries, From = from, To = to }, cancellation)).Entries ?? throw Malformed();
+    public async Task<IReadOnlyList<EntryDigest>> ListDigests(DateOnly? before, int limit, CancellationToken cancellation) => (await Send(new() { Id = 0, Command = RemoteCommand.ListDigests, Before = before, Limit = limit }, cancellation)).Digests ?? throw Malformed();
 
     /// <inheritdoc />
     public async Task<JournalEntry?> GetEntry(DateOnly date, CancellationToken cancellation) => (await Send(new() { Id = 0, Command = RemoteCommand.GetEntry, Date = date }, cancellation)).Entry;

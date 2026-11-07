@@ -27,3 +27,7 @@ The workflow does not trust the signing settings alone, because without them the
 ## Workflows
 
 - `.github/workflows/build.yml` - builds with the Android workload, verifies formatting (`dotnet format --verify-no-changes`, never applies fixes), and runs tests on every push/PR to `main`; its `publish` job (see Publishing above) only runs on `workflow_dispatch`, gated on the dispatcher having Admin permission on the repo and the run being on `main`.
+
+## Tests and real data
+
+A machine that runs the server also holds a real journal, so tests must never be able to reach it. The server and the client derive their default folders from the user's application data folder, which is where an installed server keeps its data. `Tests/src/TestEnvironment.cs` therefore points the test process's application data variables (`XDG_DATA_HOME`, `XDG_CONFIG_HOME`, `XDG_CACHE_HOME`, `LOCALAPPDATA`, `APPDATA`) at a throwaway sandbox from a module initializer, so it runs before any test code, and deletes the sandbox when the process ends. The folders are created up front because .NET reports a missing application data folder as an empty path. Every test that writes uses its own temp folder and port 0, and `TestEnvironmentTests` fails if a default config or the application data folders ever resolve outside the sandbox. A check against a running server, such as a manual or end-to-end run, uses a throwaway instance with its own data folder, port and key and a fake `claude`, never the installed service.

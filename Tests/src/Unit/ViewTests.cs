@@ -108,7 +108,7 @@ public sealed class ViewTests(HeadlessFixture fixture)
     private async Task<(Rect Before, Rect After, Rect Screen, bool Scrolls, int OuterScrollers)> MeasureJournalPanel()
     {
         Mock<IServerConnection> connection = new();
-        connection.Setup(target => target.ListEntries(It.IsAny<DateOnly?>(), It.IsAny<DateOnly?>(), It.IsAny<CancellationToken>())).ReturnsAsync([]);
+        connection.Setup(target => target.GetEntry(It.IsAny<DateOnly>(), It.IsAny<CancellationToken>())).ReturnsAsync((JournalEntry?)null);
         Mock<IVoiceRecorder> recorder = new();
 
         return await fixture.RunAsync(async () =>
@@ -156,5 +156,90 @@ public sealed class ViewTests(HeadlessFixture fixture)
         Assert.Equal(before, after);
         Assert.True(scrolls);
         Assert.Equal(0, outerScrollers);
+    }
+
+    private IReadOnlyList<EntryDigest> ManyDigests(int count) => [.. Enumerable.Range(1, count).Select(index => new EntryDigest { Date = new DateOnly(2026, 10, 15).AddDays(-index), Title = $"Title {index}", Summary = $"Summary {index}", Excerpt = $"Excerpt {index}" })];
+
+    private Mock<IServerConnection> ConnectionWith(IReadOnlyList<EntryDigest> digests)
+    {
+        Mock<IServerConnection> connection = new();
+        connection.Setup(target => target.GetEntry(It.IsAny<DateOnly>(), It.IsAny<CancellationToken>())).ReturnsAsync((JournalEntry?)null);
+        connection.Setup(target => target.ListDigests(It.IsAny<DateOnly?>(), It.IsAny<int>(), It.IsAny<CancellationToken>())).ReturnsAsync((DateOnly? before, int limit, CancellationToken _) => (IReadOnlyList<EntryDigest>)[.. digests.Where(digest => before is null || digest.Date < before).Take(limit)]);
+        return connection;
+    }
+
+    [Fact]
+    public async Task JournalList_ScrollingToTheBottomLoadsTheNextPage()
+    {
+        Mock<IServerConnection> connection = ConnectionWith(ManyDigests(120));
+
+        (int first, int afterScroll, int rendered) = await fixture.RunAsync(async () =>
+        {
+            JournalViewModel model = new(connection.Object, () => new DateOnly(2026, 10, 16));
+            await model.Load();
+            JournalView view = new() { DataContext = model };
+            Window window = new() { Width = 390, Height = 700, Content = view };
+            window.Show();
+            model.ToggleListCommand.Execute(null);
+
+            for (int attempt = 0; attempt < 100 && model.Rows.Count < 51; attempt++)
+            {
+                await Task.Delay(10);
+            }
+
+            Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+            AvaloniaHeadlessPlatform.ForceRenderTimerTick();
+            int loaded = model.Rows.Count;
+            view.GetVisualDescendants().OfType<Button>().First(button => button.Classes.Contains("entryRow")).GetVisualAncestors().OfType<ScrollViewer>().First().ScrollToEnd();
+
+            for (int attempt = 0; attempt < 100 && model.Rows.Count < 101; attempt++)
+            {
+                Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+                await Task.Delay(10);
+            }
+
+            int rows = view.GetVisualDescendants().OfType<Button>().Count(button => button.Classes.Contains("entryRow"));
+            window.Close();
+            return (loaded, model.Rows.Count, rows);
+        });
+
+        Assert.Equal(51, first);
+        Assert.Equal(101, afterScroll);
+        Assert.Equal(101, rendered);
+    }
+
+    [Fact]
+    public async Task JournalList_KeepsThePanelTheSameSizeAsTheEntryAndScrollsInside()
+    {
+        Mock<IServerConnection> connection = ConnectionWith(ManyDigests(50));
+
+        (Rect entry, Rect list, bool scrolls) = await fixture.RunAsync(async () =>
+        {
+            JournalViewModel model = new(connection.Object, () => new DateOnly(2026, 10, 16));
+            await model.Load();
+            JournalView view = new() { DataContext = model };
+            Window window = new() { Width = 390, Height = 700, Content = view };
+            window.Show();
+            Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+            Border card = view.GetVisualDescendants().OfType<Border>().First(border => border.Classes.Contains("card"));
+            Rect entryBounds = card.Bounds;
+            model.ToggleListCommand.Execute(null);
+
+            for (int attempt = 0; attempt < 100 && model.Rows.Count < 50; attempt++)
+            {
+                await Task.Delay(10);
+            }
+
+            Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+            AvaloniaHeadlessPlatform.ForceRenderTimerTick();
+            ScrollViewer scroller = view.GetVisualDescendants().OfType<Button>().First(button => button.Classes.Contains("entryRow")).GetVisualAncestors().OfType<ScrollViewer>().First();
+            Rect listBounds = card.Bounds;
+            bool scrolling = scroller.Extent.Height > scroller.Viewport.Height;
+            window.Close();
+            return (entryBounds, listBounds, scrolling);
+        });
+
+        Assert.Equal(entry, list);
+        Assert.True(scrolls);
     }
 }

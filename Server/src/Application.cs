@@ -15,7 +15,7 @@ internal interface IApplication
 }
 
 /// <inheritdoc />
-internal sealed class Application(IAppInfo info, IConfigLoader configLoader, IRequestHandler requestHandler, ISummaryScheduler scheduler, IChatRetention retention, IConnectionServer connectionServer, TextWriter output) : IApplication
+internal sealed class Application(IAppInfo info, IConfigLoader configLoader, IRequestHandler requestHandler, ISummaryScheduler scheduler, IChatRetention retention, IEntryTitleScheduler titles, IConnectionServer connectionServer, TextWriter output) : IApplication
 {
     /// <inheritdoc />
     public async Task<int> Run(IReadOnlyList<string> args, CancellationToken cancellation)
@@ -33,9 +33,10 @@ internal sealed class Application(IAppInfo info, IConfigLoader configLoader, IRe
             Task serving = connectionServer.Run(config, stop.Token);
             Task scheduling = scheduler.Run(config, stop.Token);
             Task trimming = retention.Run(config, stop.Token);
-            await Task.WhenAny(serving, scheduling, trimming);
+            Task titling = titles.Run(config, stop.Token);
+            await Task.WhenAny(serving, scheduling, trimming, titling);
             await stop.CancelAsync();
-            await Task.WhenAll(serving, scheduling, trimming);
+            await Task.WhenAll(serving, scheduling, trimming, titling);
             return 0;
         }
         catch (Exception exception) when (exception is IOException or InvalidDataException or SocketException or SqliteException)

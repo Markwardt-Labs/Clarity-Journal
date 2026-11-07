@@ -22,12 +22,12 @@ internal sealed class TestServer : IAsyncDisposable
 
     public ConnectionSettings Settings(string key = "secret", string? fingerprint = null) => new() { Host = "127.0.0.1", Port = Port, AccessKey = key, Fingerprint = fingerprint };
 
-    public static async Task<TestServer> Start(IClaudeRunner claude, TimeProvider? time = null, string? dataFolder = null, Func<ServerConfig, ServerConfig>? configure = null)
+    public static async Task<TestServer> Start(IClaudeRunner claude, TimeProvider? time = null, string? dataFolder = null, Func<ServerConfig, ServerConfig>? configure = null, bool titling = false)
     {
         TempFolder? temp = dataFolder is null ? new TempFolder() : null;
         ServerConfig config = new() { Port = 0, Key = "secret", DataFolder = dataFolder ?? temp!.Combine("data"), SpeechModel = string.Empty };
         TestServer server = new(configure?.Invoke(config) ?? config, temp);
-        await server.Open(claude, time ?? TimeProvider.System);
+        await server.Open(claude, time ?? TimeProvider.System, titling);
         return server;
     }
 
@@ -38,7 +38,7 @@ internal sealed class TestServer : IAsyncDisposable
         temp?.Dispose();
     }
 
-    private async Task Open(IClaudeRunner claude, TimeProvider time)
+    private async Task Open(IClaudeRunner claude, TimeProvider time, bool titling)
     {
         ILog log = Mock.Of<ILog>();
         EventHub events = new();
@@ -57,7 +57,8 @@ internal sealed class TestServer : IAsyncDisposable
         TaskCompletionSource<string> certified = new();
         server.Listening += listening.SetResult;
         server.Certified += certified.SetResult;
-        running = Task.WhenAll(server.Run(Config, stopping.Token), new SummaryScheduler(summarizer, summaryStore, new SummarySchedule(), time, log).Run(Config, stopping.Token), new ChatRetention(chat, time, log).Run(Config, stopping.Token));
+        Task titles = titling ? new EntryTitleScheduler(new EntryTitler(entries, claude, prompts, export, events, time, log), time, log).Run(Config, stopping.Token) : Task.CompletedTask;
+        running = Task.WhenAll(server.Run(Config, stopping.Token), new SummaryScheduler(summarizer, summaryStore, new SummarySchedule(), time, log).Run(Config, stopping.Token), new ChatRetention(chat, time, log).Run(Config, stopping.Token), titles);
         Port = await listening.Task;
         Fingerprint = await certified.Task;
     }

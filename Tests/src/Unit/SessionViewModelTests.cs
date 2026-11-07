@@ -8,7 +8,7 @@ public sealed class SessionViewModelTests
 
     public SessionViewModelTests()
     {
-        connection.Setup(target => target.ListEntries(It.IsAny<DateOnly?>(), It.IsAny<DateOnly?>(), It.IsAny<CancellationToken>())).ReturnsAsync([]);
+        connection.Setup(target => target.GetEntry(It.IsAny<DateOnly>(), It.IsAny<CancellationToken>())).ReturnsAsync((JournalEntry?)null);
         connection.Setup(target => target.GetSummaries(It.IsAny<SummaryKind>(), It.IsAny<CancellationToken>())).ReturnsAsync([]);
         connection.Setup(target => target.GetChat(It.IsAny<CancellationToken>())).ReturnsAsync(new ChatHistory { Messages = [], Working = false });
         model = new SessionViewModel(connection.Object, new ConnectionSettings { Host = "10.0.0.5", Port = 4000, AccessKey = "key" }, "Clarity Journal 1.0.0", () => new DateOnly(2026, 10, 16));

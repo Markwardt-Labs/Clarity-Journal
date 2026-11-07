@@ -6,13 +6,13 @@ namespace Markwardt.ClarityJournal.Server;
 internal interface IJournalService
 {
     /// <summary>
-    /// Lists the entries between two days.
+    /// Lists what a list of entries shows of the days that have one, newest first, one page at a time.
     /// </summary>
-    /// <param name="from">The first day, or <see langword="null" /> for no lower bound.</param>
-    /// <param name="to">The last day, or <see langword="null" /> for no upper bound.</param>
+    /// <param name="before">The day before which days are listed, or <see langword="null" /> to start with the newest.</param>
+    /// <param name="limit">How many days at most, or <see langword="null" /> for 50; at least 1 and at most 200.</param>
     /// <param name="cancellation">Cancels the read.</param>
-    /// <returns>The entries, oldest first.</returns>
-    Task<IReadOnlyList<JournalEntry>> List(DateOnly? from, DateOnly? to, CancellationToken cancellation);
+    /// <returns>The digests, newest first; fewer than the limit means there are no older days.</returns>
+    Task<IReadOnlyList<EntryDigest>> Digests(DateOnly? before, int? limit, CancellationToken cancellation);
 
     /// <summary>
     /// Reads the entry of a day.
@@ -46,8 +46,12 @@ internal sealed class JournalService(IEntryStore entries, IJournalExport export,
 {
     private readonly int maxLength = 100000;
 
+    private readonly int defaultPage = 50;
+
+    private readonly int maxPage = 200;
+
     /// <inheritdoc />
-    public Task<IReadOnlyList<JournalEntry>> List(DateOnly? from, DateOnly? to, CancellationToken cancellation) => entries.List(from, to, cancellation);
+    public Task<IReadOnlyList<EntryDigest>> Digests(DateOnly? before, int? limit, CancellationToken cancellation) => entries.ListDigests(before, Math.Clamp(limit ?? defaultPage, 1, maxPage), cancellation);
 
     /// <inheritdoc />
     public Task<JournalEntry?> Get(DateOnly date, CancellationToken cancellation) => entries.Get(date, cancellation);
@@ -72,7 +76,7 @@ internal sealed class JournalService(IEntryStore entries, IJournalExport export,
 
         JournalEntry entry = await entries.Save(date, text.Trim(), time.GetUtcNow(), cancellation);
         await export.WriteEntry(entry, cancellation);
-        events.Publish(new RemoteEvent { Kind = RemoteEventKind.EntryChanged, Date = date });
+        events.Publish(new RemoteEvent { Kind = RemoteEventKind.EntryChanged, Date = date, Digest = await entries.GetDigest(date, cancellation) });
         return entry;
     }
 

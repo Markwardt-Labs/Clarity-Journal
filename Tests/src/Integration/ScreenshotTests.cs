@@ -104,7 +104,9 @@ public sealed class ScreenshotTests(HeadlessFixture fixture)
         DateOnly today = DateOnly.FromDateTime(DateTime.Now);
         FakeClaude claude = new()
         {
-            Reply = request => request.Tools.Count == 0
+            Reply = request => request.SystemPrompt == new Prompts().TitleSystem
+                ? (request.Prompt.Contains("Started running", StringComparison.Ordinal) ? "{\"title\": \"Running again\", \"summary\": \"You started running again and felt alive despite sore legs.\"}" : "{\"title\": \"A 5k without stopping\", \"summary\": \"You ran 5k, slept well and felt grateful for good friends.\"}")
+                : request.Tools.Count == 0
                 ? "## Highlights\n\nYou **started running** and felt *great* about it.\n\n- Ran 5k on Friday\n- Slept well all week\n\n> Small steps add up."
                 : "You ran **5k** on [Friday, October 16](entries/2026/2026-10-16.md).\n\n- Felt strong\n- Slept well afterwards"
         };
@@ -124,10 +126,10 @@ public sealed class ScreenshotTests(HeadlessFixture fixture)
             await setup.DisposeAsync();
         }
 
-        await using TestServer server = await TestServer.Start(claude, new FixedTimeProvider(start.AddDays(8)), data.Path);
+        await using TestServer server = await TestServer.Start(claude, new FixedTimeProvider(start.AddDays(8)), data.Path, null, true);
         IServerConnection watching = await new IServerConnection.Factory(new IMessageChannel.Factory(), Mock.Of<ILog>()).Connect(server.Settings(), CancellationToken.None);
 
-        for (int attempt = 0; attempt < 250 && (await watching.GetSummaries(SummaryKind.Lifetime, CancellationToken.None)).Count == 0; attempt++)
+        for (int attempt = 0; attempt < 250 && ((await watching.GetSummaries(SummaryKind.Lifetime, CancellationToken.None)).Count == 0 || (await watching.ListDigests(null, 50, CancellationToken.None)).Any(digest => digest.Title is null)); attempt++)
         {
             await Task.Delay(20);
         }
@@ -144,7 +146,7 @@ public sealed class ScreenshotTests(HeadlessFixture fixture)
             Window window = new() { Width = 390, Height = 800, Content = view };
             window.Show();
 
-            if (!await Until(() => model.Current is SessionViewModel { Journal.Days.Count: 42 }))
+            if (!await Until(() => model.Current is SessionViewModel { Journal.IsEntryOpen: true }))
             {
                 return ["The session never opened: " + model.Current];
             }
@@ -174,9 +176,9 @@ public sealed class ScreenshotTests(HeadlessFixture fixture)
                 problems.Add("journal gradient top is not pink");
             }
 
-            if (session.Journal.IsCalendarOpen || !session.Journal.CanEdit)
+            if (session.Journal.IsListOpen || !session.Journal.CanEdit)
             {
-                problems.Add("the journal should open on an editable empty entry for today with the calendar closed");
+                problems.Add("the journal should open on an editable empty entry for today with the list closed");
             }
 
             if (!session.Journal.Dictation.CanDictate)
@@ -196,22 +198,27 @@ public sealed class ScreenshotTests(HeadlessFixture fixture)
             session.Journal.EntryText = string.Join('\n', Enumerable.Range(1, 60).Select(line => $"Line {line} of today's long entry, which scrolls inside the panel."));
             Capture(window, "2c-journal-long-entry");
             session.Journal.EntryText = string.Empty;
-            session.Journal.ToggleCalendarCommand.Execute(null);
-            await Until(() => session.Journal.Days.Count(day => day.HasEntry) == 2);
-            Capture(window, "3-journal-calendar");
+            session.Journal.ToggleListCommand.Execute(null);
+            await Until(() => session.Journal.Rows.Count == 3 && session.Journal.Rows.All(row => row.IsToday || row.HasHeading));
+            Capture(window, "3-journal-list");
 
-            if (session.Journal.Days.Count(day => day.IsSelectable) != 3)
+            if (session.Journal.Rows.Count != 3 || !session.Journal.Rows[0].IsToday || session.Journal.Rows[1].Date != today.AddDays(-1) || session.Journal.Rows[2].Date != today.AddDays(-3))
             {
-                problems.Add("only today and the two days with entries should be selectable");
+                problems.Add("the list should show today and the two days with entries, newest first");
             }
 
-            session.Journal.Days.Single(day => day.Date == today.AddDays(-1)).Select.Execute(null);
+            if (session.Journal.Rows[1].Heading != "A 5k without stopping" || session.Journal.Rows[2].Body.Length == 0)
+            {
+                problems.Add("the list rows should show the generated title and summary");
+            }
+
+            session.Journal.Rows.Single(row => row.Date == today.AddDays(-1)).Select.Execute(null);
             await Until(() => session.Journal.IsReadOnly);
             Capture(window, "4-journal-past-entry");
 
-            if (!session.Journal.IsReadOnly || session.Journal.IsCalendarOpen || session.Journal.EntryText.Length == 0)
+            if (!session.Journal.IsReadOnly || session.Journal.IsListOpen || session.Journal.EntryText.Length == 0)
             {
-                problems.Add("selecting an earlier day should show its entry read-only and close the calendar");
+                problems.Add("selecting an earlier day should show its entry read-only and close the list");
             }
 
             session.SelectTabCommand.Execute(AppTab.Summaries);
