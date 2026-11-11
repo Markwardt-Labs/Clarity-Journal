@@ -12,7 +12,7 @@ internal interface IJournalService
     /// <param name="limit">How many days at most, or <see langword="null" /> for 50; at least 1 and at most 200.</param>
     /// <param name="cancellation">Cancels the read.</param>
     /// <returns>The digests, newest first; fewer than the limit means there are no older days.</returns>
-    Task<IReadOnlyList<EntryDigest>> Digests(DateOnly? before, int? limit, CancellationToken cancellation);
+    Task<IReadOnlyList<EntryDigest>> Digests(DateOnly? before, int? limit, CancellationToken cancellation = default);
 
     /// <summary>
     /// Reads the entry of a day.
@@ -20,7 +20,7 @@ internal interface IJournalService
     /// <param name="date">The day.</param>
     /// <param name="cancellation">Cancels the read.</param>
     /// <returns>The entry, or <see langword="null" /> if the day has none.</returns>
-    Task<JournalEntry?> Get(DateOnly date, CancellationToken cancellation);
+    Task<JournalEntry?> Get(DateOnly date, CancellationToken cancellation = default);
 
     /// <summary>
     /// Writes the entry of a day, replacing the one it has.
@@ -30,7 +30,7 @@ internal interface IJournalService
     /// <param name="cancellation">Cancels the write.</param>
     /// <returns>The stored entry.</returns>
     /// <exception cref="RequestException">The text is blank or too long, or the day is too far ahead.</exception>
-    Task<JournalEntry> Save(DateOnly date, string text, CancellationToken cancellation);
+    Task<JournalEntry> Save(DateOnly date, string text, CancellationToken cancellation = default);
 
     /// <summary>
     /// Deletes the entry of a day.
@@ -38,7 +38,7 @@ internal interface IJournalService
     /// <param name="date">The day.</param>
     /// <param name="cancellation">Cancels the write.</param>
     /// <exception cref="RequestException">The day has no entry.</exception>
-    Task Delete(DateOnly date, CancellationToken cancellation);
+    Task Delete(DateOnly date, CancellationToken cancellation = default);
 }
 
 /// <inheritdoc />
@@ -51,13 +51,15 @@ internal sealed class JournalService(IEntryStore entries, IJournalExport export,
     private readonly int maxPage = 200;
 
     /// <inheritdoc />
-    public Task<IReadOnlyList<EntryDigest>> Digests(DateOnly? before, int? limit, CancellationToken cancellation) => entries.ListDigests(before, Math.Clamp(limit ?? defaultPage, 1, maxPage), cancellation);
+    public Task<IReadOnlyList<EntryDigest>> Digests(DateOnly? before, int? limit, CancellationToken cancellation = default)
+        => entries.ListDigests(before, Math.Clamp(limit ?? defaultPage, 1, maxPage), cancellation);
 
     /// <inheritdoc />
-    public Task<JournalEntry?> Get(DateOnly date, CancellationToken cancellation) => entries.Get(date, cancellation);
+    public Task<JournalEntry?> Get(DateOnly date, CancellationToken cancellation = default)
+        => entries.Get(date, cancellation);
 
     /// <inheritdoc />
-    public async Task<JournalEntry> Save(DateOnly date, string text, CancellationToken cancellation)
+    public async Task<JournalEntry> Save(DateOnly date, string text, CancellationToken cancellation = default)
     {
         if (string.IsNullOrWhiteSpace(text))
         {
@@ -81,7 +83,7 @@ internal sealed class JournalService(IEntryStore entries, IJournalExport export,
     }
 
     /// <inheritdoc />
-    public async Task Delete(DateOnly date, CancellationToken cancellation)
+    public async Task Delete(DateOnly date, CancellationToken cancellation = default)
     {
         if (!await entries.Delete(date, cancellation))
         {

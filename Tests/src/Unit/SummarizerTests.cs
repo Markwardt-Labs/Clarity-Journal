@@ -33,7 +33,8 @@ public sealed class SummarizerTests
         summarizer = new Summarizer(entries.Object, summaries.Object, claude.Object, new Prompts(), export.Object, events, new FixedTimeProvider(new DateTimeOffset(2026, 10, 16, 20, 0, 0, TimeSpan.Zero)), Mock.Of<ILog>());
     }
 
-    private RevisedEntry Revised(string date, long revision, string text = "text") => new() { Entry = new JournalEntry { Date = DateOnly.Parse(date, CultureInfo.InvariantCulture), Text = text, UpdatedAt = DateTimeOffset.UnixEpoch }, Revision = revision };
+    private RevisedEntry Revised(string date, long revision, string text = "text")
+        => new() { Entry = new JournalEntry { Date = DateOnly.Parse(date, CultureInfo.InvariantCulture), Text = text, UpdatedAt = DateTimeOffset.UnixEpoch }, Revision = revision };
 
     private void Pending(long taken, long latest, params RevisedEntry[] pending)
     {

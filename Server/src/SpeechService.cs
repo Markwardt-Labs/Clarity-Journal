@@ -18,7 +18,7 @@ internal interface ISpeechService
     /// <param name="cancellation">Cancels the transcription, which ends the speech command.</param>
     /// <returns>The text the speech command printed, trimmed; empty when nothing was heard.</returns>
     /// <exception cref="RequestException">The server has no speech command, the audio is not base64 or it is empty or larger than the limit, or the command failed or ran too long.</exception>
-    Task<string> Transcribe(string data, CancellationToken cancellation);
+    Task<string> Transcribe(string data, CancellationToken cancellation = default);
 }
 
 /// <inheritdoc />
@@ -43,7 +43,7 @@ internal sealed class SpeechService(IWhisperEngine engine) : ISpeechService
     }
 
     /// <inheritdoc />
-    public async Task<string> Transcribe(string data, CancellationToken cancellation)
+    public async Task<string> Transcribe(string data, CancellationToken cancellation = default)
     {
         byte[] bytes = new byte[data.Length / 4 * 3 + 3];
 
@@ -88,7 +88,7 @@ internal sealed class SpeechService(IWhisperEngine engine) : ISpeechService
         }
     }
 
-    private async Task<string> Run(string file, CancellationToken cancellation)
+    private async Task<string> Run(string file, CancellationToken cancellation = default)
     {
         ProcessStartInfo start = new(config.SpeechCommand!) { RedirectStandardOutput = true, RedirectStandardError = true, RedirectStandardInput = true, UseShellExecute = false, CreateNoWindow = true };
 

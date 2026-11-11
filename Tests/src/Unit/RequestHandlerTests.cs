@@ -14,13 +14,16 @@ public sealed class RequestHandlerTests
 
     private readonly Mock<ISpeechService> speech = new();
 
+    private readonly Mock<IServerUpdater> updater = new();
+
     private readonly ServerConfig config = new() { Key = "k", DataFolder = "/data" };
 
     private readonly RequestHandler handler;
 
     private readonly JournalEntry entry = new() { Date = new DateOnly(2026, 10, 16), Text = "x", UpdatedAt = DateTimeOffset.UnixEpoch };
 
-    public RequestHandlerTests() => handler = new RequestHandler(database.Object, export.Object, journal.Object, summaries.Object, chat.Object, speech.Object);
+    public RequestHandlerTests()
+        => handler = new RequestHandler(database.Object, export.Object, journal.Object, summaries.Object, chat.Object, speech.Object, updater.Object);
 
     private async Task<RemoteResponse> Handle(RemoteRequest request)
     {

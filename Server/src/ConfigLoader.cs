@@ -13,7 +13,7 @@ internal interface IConfigLoader
     /// <returns>The validated config.</returns>
     /// <exception cref="FileNotFoundException">The file does not exist.</exception>
     /// <exception cref="InvalidDataException">The file is not valid JSON, or a setting is missing or out of range.</exception>
-    Task<ServerConfig> Load(string path, CancellationToken cancellation);
+    Task<ServerConfig> Load(string path, CancellationToken cancellation = default);
 }
 
 /// <inheritdoc />
@@ -22,7 +22,7 @@ internal sealed class ConfigLoader : IConfigLoader
     private readonly JsonSerializerOptions options = new() { PropertyNameCaseInsensitive = true };
 
     /// <inheritdoc />
-    public async Task<ServerConfig> Load(string path, CancellationToken cancellation)
+    public async Task<ServerConfig> Load(string path, CancellationToken cancellation = default)
     {
         ServerConfig? config;
 

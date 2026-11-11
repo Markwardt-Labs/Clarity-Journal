@@ -31,7 +31,8 @@ public sealed class StoreTests : IAsyncLifetime
         return Task.CompletedTask;
     }
 
-    private DateOnly Day(string date) => DateOnly.Parse(date, CultureInfo.InvariantCulture);
+    private DateOnly Day(string date)
+        => DateOnly.Parse(date, CultureInfo.InvariantCulture);
 
     [Fact]
     public async Task Initialize_CanRunAgainOnAnExistingDatabaseWithoutLosingData()
@@ -140,7 +141,8 @@ public sealed class StoreTests : IAsyncLifetime
         Assert.Equal(Enumerable.Range(1, 20).Select(revision => (long)revision), revisions);
     }
 
-    private StoredSummary Stored(SummaryKind kind, string period, string start, string end, string text, long through) => new() { Summary = new Summary { Kind = kind, Period = period, Start = Day(start), End = Day(end), Text = text, EntryCount = 3, UpdatedAt = at }, ThroughRevision = through };
+    private StoredSummary Stored(SummaryKind kind, string period, string start, string end, string text, long through)
+        => new() { Summary = new Summary { Kind = kind, Period = period, Start = Day(start), End = Day(end), Text = text, EntryCount = 3, UpdatedAt = at }, ThroughRevision = through };
 
     [Fact]
     public async Task Summaries_SaveReplacesTheSamePeriodAndGetReadsItBack()

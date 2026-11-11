@@ -12,7 +12,8 @@ public sealed class SummariesViewModelTests
         model = new SummariesViewModel(connection.Object);
     }
 
-    private Summary Summary(SummaryKind kind) => new() { Kind = kind, Period = kind.ToString(), Start = new DateOnly(2026, 10, 12), End = new DateOnly(2026, 10, 18), Text = $"{kind} text", EntryCount = 4, UpdatedAt = DateTimeOffset.UnixEpoch };
+    private Summary Summary(SummaryKind kind)
+        => new() { Kind = kind, Period = kind.ToString(), Start = new DateOnly(2026, 10, 12), End = new DateOnly(2026, 10, 18), Text = $"{kind} text", EntryCount = 4, UpdatedAt = DateTimeOffset.UnixEpoch };
 
     [Fact]
     public async Task Load_ShowsTheWeeklySummaries()

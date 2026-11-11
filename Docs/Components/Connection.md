@@ -8,7 +8,7 @@ A TCP connection is wrapped in TLS with the server's certificate, then upgraded 
 
 ## Handshake
 
-The key is compared in fixed time. A wrong key, an overlong line or a malformed line gets `accepted: false` and a closed connection; a client that sends nothing within five seconds is closed without any reply.
+An acceptance carries the server's version; the client keeps it as `ServerVersion` and reads it again every time it reopens the connection, since an update restarts the server behind the same client. The key is compared in fixed time. A wrong key, an overlong line or a malformed line gets `accepted: false` and a closed connection; a client that sends nothing within five seconds is closed without any reply.
 
 ## Serving a client
 

@@ -12,7 +12,7 @@ internal interface ISummaryStore
     /// <param name="period">The period identifier.</param>
     /// <param name="cancellation">Cancels the read.</param>
     /// <returns>The summary, or <see langword="null" /> if the period has none yet.</returns>
-    Task<StoredSummary?> Get(SummaryKind kind, string period, CancellationToken cancellation);
+    Task<StoredSummary?> Get(SummaryKind kind, string period, CancellationToken cancellation = default);
 
     /// <summary>
     /// Lists the summaries of a kind, or all of them.
@@ -20,42 +20,42 @@ internal interface ISummaryStore
     /// <param name="kind">The kind, or <see langword="null" /> for every kind.</param>
     /// <param name="cancellation">Cancels the read.</param>
     /// <returns>The summaries, newest period first.</returns>
-    Task<IReadOnlyList<Summary>> List(SummaryKind? kind, CancellationToken cancellation);
+    Task<IReadOnlyList<Summary>> List(SummaryKind? kind, CancellationToken cancellation = default);
 
     /// <summary>
     /// Writes a summary, replacing the one its period has.
     /// </summary>
     /// <param name="summary">The summary to write.</param>
     /// <param name="cancellation">Cancels the write.</param>
-    Task Save(StoredSummary summary, CancellationToken cancellation);
+    Task Save(StoredSummary summary, CancellationToken cancellation = default);
 
     /// <summary>
     /// Reads the revision through which every summary has taken in every entry.
     /// </summary>
     /// <param name="cancellation">Cancels the read.</param>
     /// <returns>The revision, or zero before the first complete run.</returns>
-    Task<long> GetSummarizedRevision(CancellationToken cancellation);
+    Task<long> GetSummarizedRevision(CancellationToken cancellation = default);
 
     /// <summary>
     /// Records the revision through which every summary has taken in every entry.
     /// </summary>
     /// <param name="revision">The revision.</param>
     /// <param name="cancellation">Cancels the write.</param>
-    Task SetSummarizedRevision(long revision, CancellationToken cancellation);
+    Task SetSummarizedRevision(long revision, CancellationToken cancellation = default);
 
     /// <summary>
     /// Reads when summaries were last updated.
     /// </summary>
     /// <param name="cancellation">Cancels the read.</param>
     /// <returns>The time, or <see langword="null" /> if they never were.</returns>
-    Task<DateTimeOffset?> GetLastRun(CancellationToken cancellation);
+    Task<DateTimeOffset?> GetLastRun(CancellationToken cancellation = default);
 
     /// <summary>
     /// Records when summaries were last updated.
     /// </summary>
     /// <param name="at">The time.</param>
     /// <param name="cancellation">Cancels the write.</param>
-    Task SetLastRun(DateTimeOffset at, CancellationToken cancellation);
+    Task SetLastRun(DateTimeOffset at, CancellationToken cancellation = default);
 }
 
 /// <inheritdoc />
@@ -66,7 +66,7 @@ internal sealed class SummaryStore(IDatabase database, IMetaStore meta) : ISumma
     private readonly string select = "SELECT kind, period, start, finish, text, entry_count, updated_at, through_revision FROM summaries";
 
     /// <inheritdoc />
-    public async Task<StoredSummary?> Get(SummaryKind kind, string period, CancellationToken cancellation)
+    public async Task<StoredSummary?> Get(SummaryKind kind, string period, CancellationToken cancellation = default)
     {
         await using SqliteConnection connection = await database.Open(cancellation);
         await using SqliteCommand command = connection.CreateCommand();
@@ -78,7 +78,7 @@ internal sealed class SummaryStore(IDatabase database, IMetaStore meta) : ISumma
     }
 
     /// <inheritdoc />
-    public async Task<IReadOnlyList<Summary>> List(SummaryKind? kind, CancellationToken cancellation)
+    public async Task<IReadOnlyList<Summary>> List(SummaryKind? kind, CancellationToken cancellation = default)
     {
         await using SqliteConnection connection = await database.Open(cancellation);
         await using SqliteCommand command = connection.CreateCommand();
@@ -96,7 +96,7 @@ internal sealed class SummaryStore(IDatabase database, IMetaStore meta) : ISumma
     }
 
     /// <inheritdoc />
-    public async Task Save(StoredSummary summary, CancellationToken cancellation)
+    public async Task Save(StoredSummary summary, CancellationToken cancellation = default)
     {
         await using SqliteConnection connection = await database.Open(cancellation);
         await using SqliteCommand command = connection.CreateCommand();
@@ -118,29 +118,34 @@ internal sealed class SummaryStore(IDatabase database, IMetaStore meta) : ISumma
     }
 
     /// <inheritdoc />
-    public async Task<long> GetSummarizedRevision(CancellationToken cancellation) => long.TryParse(await meta.Get("summarized_revision", cancellation), CultureInfo.InvariantCulture, out long revision) ? revision : 0;
+    public async Task<long> GetSummarizedRevision(CancellationToken cancellation = default)
+        => long.TryParse(await meta.Get("summarized_revision", cancellation), CultureInfo.InvariantCulture, out long revision) ? revision : 0;
 
     /// <inheritdoc />
-    public Task SetSummarizedRevision(long revision, CancellationToken cancellation) => meta.Set("summarized_revision", revision.ToString(CultureInfo.InvariantCulture), cancellation);
+    public Task SetSummarizedRevision(long revision, CancellationToken cancellation = default)
+        => meta.Set("summarized_revision", revision.ToString(CultureInfo.InvariantCulture), cancellation);
 
     /// <inheritdoc />
-    public async Task<DateTimeOffset?> GetLastRun(CancellationToken cancellation) => DateTimeOffset.TryParse(await meta.Get("last_summarized", cancellation), CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind, out DateTimeOffset at) ? at : null;
+    public async Task<DateTimeOffset?> GetLastRun(CancellationToken cancellation = default)
+        => DateTimeOffset.TryParse(await meta.Get("last_summarized", cancellation), CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind, out DateTimeOffset at) ? at : null;
 
     /// <inheritdoc />
-    public Task SetLastRun(DateTimeOffset at, CancellationToken cancellation) => meta.Set("last_summarized", at.ToString("O", CultureInfo.InvariantCulture), cancellation);
+    public Task SetLastRun(DateTimeOffset at, CancellationToken cancellation = default)
+        => meta.Set("last_summarized", at.ToString("O", CultureInfo.InvariantCulture), cancellation);
 
-    private StoredSummary Read(SqliteDataReader reader) => new()
-    {
-        Summary = new Summary
+    private StoredSummary Read(SqliteDataReader reader)
+        => new()
         {
-            Kind = Enum.Parse<SummaryKind>(reader.GetString(0)),
-            Period = reader.GetString(1),
-            Start = DateOnly.ParseExact(reader.GetString(2), dateFormat, CultureInfo.InvariantCulture),
-            End = DateOnly.ParseExact(reader.GetString(3), dateFormat, CultureInfo.InvariantCulture),
-            Text = reader.GetString(4),
-            EntryCount = reader.GetInt32(5),
-            UpdatedAt = DateTimeOffset.Parse(reader.GetString(6), CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind)
-        },
-        ThroughRevision = reader.GetInt64(7)
-    };
+            Summary = new Summary
+            {
+                Kind = Enum.Parse<SummaryKind>(reader.GetString(0)),
+                Period = reader.GetString(1),
+                Start = DateOnly.ParseExact(reader.GetString(2), dateFormat, CultureInfo.InvariantCulture),
+                End = DateOnly.ParseExact(reader.GetString(3), dateFormat, CultureInfo.InvariantCulture),
+                Text = reader.GetString(4),
+                EntryCount = reader.GetInt32(5),
+                UpdatedAt = DateTimeOffset.Parse(reader.GetString(6), CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind)
+            },
+            ThroughRevision = reader.GetInt64(7)
+        };
 }

@@ -1,0 +1,19 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="Markwardt.ClarityJournal.Client.UpdatingView"
+             x:CompileBindings="False">
+  <Border Background="{DynamicResource WelcomeGradient}" TextElement.Foreground="White">
+    <ScrollViewer VerticalScrollBarVisibility="Auto">
+      <StackPanel MaxWidth="420" Margin="32,56,32,32" Spacing="12" VerticalAlignment="Center">
+        <Border Classes="logo" HorizontalAlignment="Center" Margin="0,0,0,12">
+          <Path Classes="icon rose" Data="{StaticResource JournalIconGeometry}" Height="48" HorizontalAlignment="Center" VerticalAlignment="Center" />
+        </Border>
+        <TextBlock Text="Clarity Journal" Classes="title" HorizontalAlignment="Center" />
+        <TextBlock Text="Updating" Classes="soft" HorizontalAlignment="Center" Margin="0,0,0,20" />
+        <TextBlock Text="{Binding Status}" TextWrapping="Wrap" HorizontalAlignment="Center" TextAlignment="Center" />
+        <ProgressBar IsIndeterminate="{Binding IsProgressUnknown}" Minimum="0" Maximum="1" Value="{Binding Progress}" IsVisible="{Binding IsWorking}" Margin="0,8,0,0" />
+        <Button Content="{Binding CloseText}" Command="{Binding CloseCommand}" IsVisible="{Binding CanClose}" Classes="ghost" HorizontalAlignment="Stretch" Margin="0,16,0,0" />
+      </StackPanel>
+    </ScrollViewer>
+  </Border>
+</UserControl>

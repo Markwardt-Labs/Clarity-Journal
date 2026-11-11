@@ -30,9 +30,11 @@ public sealed class EntryTitlerTests
         titler = new EntryTitler(entries.Object, claude.Object, prompts, export.Object, events, new FixedTimeProvider(new DateTimeOffset(2026, 10, 16, 0, 5, 0, TimeSpan.Zero)), Mock.Of<ILog>());
     }
 
-    private JournalEntry Entry(string date, string text = "Cooked pasta for friends") => new() { Date = DateOnly.Parse(date, CultureInfo.InvariantCulture), Text = text, UpdatedAt = DateTimeOffset.UnixEpoch };
+    private JournalEntry Entry(string date, string text = "Cooked pasta for friends")
+        => new() { Date = DateOnly.Parse(date, CultureInfo.InvariantCulture), Text = text, UpdatedAt = DateTimeOffset.UnixEpoch };
 
-    private void Pending(params JournalEntry[] pending) => entries.Setup(store => store.ListUntitled(new DateOnly(2026, 10, 16), It.IsAny<CancellationToken>())).ReturnsAsync(pending);
+    private void Pending(params JournalEntry[] pending)
+        => entries.Setup(store => store.ListUntitled(new DateOnly(2026, 10, 16), It.IsAny<CancellationToken>())).ReturnsAsync(pending);
 
     [Fact]
     public async Task Run_TitlesEveryPendingEntryFromItsOwnTextAndAnnouncesTheDigest()

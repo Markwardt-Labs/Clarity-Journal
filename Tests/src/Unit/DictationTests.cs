@@ -25,7 +25,8 @@ public sealed class DictationTests
         dictation.Failed += failures.Add;
     }
 
-    private ReadOnlyMemory<byte> Speech(double seconds) => new byte[(int)(16000 * 2 * seconds)];
+    private ReadOnlyMemory<byte> Speech(double seconds)
+        => new byte[(int)(16000 * 2 * seconds)];
 
     [Fact]
     public void CanDictate_IsOnlyTrueWhenTheClientCanRecord()
@@ -252,7 +253,8 @@ public sealed class DictationInScreensTests
         Assert.Equal("Voice input is turned off on the server.", chat.Error);
     }
 
-    private SessionViewModel Session() => new(connection.Object, new ConnectionSettings { Host = "host", Port = 1, AccessKey = "k" }, "v", () => new DateOnly(2026, 10, 16), recorder.Object);
+    private SessionViewModel Session()
+        => new(connection.Object, new ConnectionSettings { Host = "host", Port = 1, AccessKey = "k" }, "v", () => new DateOnly(2026, 10, 16), recorder.Object);
 
     [Fact]
     public void Session_LeavingTheJournalTabEndsTheRecordingAndKeepsTheText()

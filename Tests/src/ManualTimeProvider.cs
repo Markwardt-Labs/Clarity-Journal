@@ -10,7 +10,8 @@ public sealed class ManualTimeProvider(DateTimeOffset start) : TimeProvider
 
     public int ActiveTimers => timers.Count(timer => !timer.Disposed);
 
-    public override DateTimeOffset GetUtcNow() => now;
+    public override DateTimeOffset GetUtcNow()
+        => now;
 
     public override ITimer CreateTimer(TimerCallback callback, object? state, TimeSpan dueTime, TimeSpan period)
     {
@@ -44,9 +45,11 @@ public sealed class ManualTimeProvider(DateTimeOffset start) : TimeProvider
             callback(state);
         }
 
-        public bool Change(TimeSpan dueTime, TimeSpan newPeriod) => false;
+        public bool Change(TimeSpan dueTime, TimeSpan newPeriod)
+            => false;
 
-        public void Dispose() => Disposed = true;
+        public void Dispose()
+            => Disposed = true;
 
         public ValueTask DisposeAsync()
         {

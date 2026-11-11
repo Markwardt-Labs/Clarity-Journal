@@ -8,7 +8,8 @@ public sealed class ConnectViewModelTests
 
     private readonly List<(IServerConnection Connection, ConnectionSettings Settings)> connected = [];
 
-    public ConnectViewModelTests() => connection.SetupGet(target => target.Fingerprint).Returns("ABCD");
+    public ConnectViewModelTests()
+        => connection.SetupGet(target => target.Fingerprint).Returns("ABCD");
 
     private ConnectViewModel Create(ConnectionSettings? initial = null)
     {

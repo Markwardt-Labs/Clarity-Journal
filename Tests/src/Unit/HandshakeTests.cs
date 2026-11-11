@@ -4,18 +4,20 @@ public sealed class HandshakeTests
 {
     private static async Task<(HandshakeOutcome outcome, string reply)> Run(string sent, string key)
     {
+        Mock<IAppInfo> info = new();
+        info.SetupGet(target => target.Version).Returns("3.4.5");
         using DuplexStream stream = new(Encoding.UTF8.GetBytes(sent));
-        HandshakeOutcome outcome = await new Handshake().Perform(stream, key, CancellationToken.None);
+        HandshakeOutcome outcome = await new Handshake(info.Object).Perform(stream, key, CancellationToken.None);
         return (outcome, Encoding.UTF8.GetString(stream.Written.ToArray()));
     }
 
     [Fact]
-    public async Task Perform_AcceptsCorrectKey()
+    public async Task Perform_AcceptsCorrectKeyAndTellsTheServersVersion()
     {
         (HandshakeOutcome outcome, string reply) = await Run("{\"accessKey\":\"secret\"}\r\n", "secret");
 
         Assert.Equal(HandshakeOutcome.Accepted, outcome);
-        Assert.Equal("{\"accepted\":true}\n", reply);
+        Assert.Equal("{\"accepted\":true,\"version\":\"3.4.5\"}\n", reply);
     }
 
     [Theory]

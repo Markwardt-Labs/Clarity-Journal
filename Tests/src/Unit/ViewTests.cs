@@ -27,22 +27,24 @@ public sealed class ViewTests(HeadlessFixture fixture)
         ---
         """;
 
-    private string Flatten(InlineCollection inlines) => string.Concat(inlines.Select(inline => inline switch
-    {
-        Avalonia.Controls.Documents.Run run => run.Text,
-        Avalonia.Controls.Documents.Span span => Flatten(span.Inlines),
-        _ => string.Empty
-    }));
+    private string Flatten(InlineCollection inlines)
+        => string.Concat(inlines.Select(inline => inline switch
+        {
+            Avalonia.Controls.Documents.Run run => run.Text,
+            Avalonia.Controls.Documents.Span span => Flatten(span.Inlines),
+            _ => string.Empty
+        }));
 
-    private Task<List<string>> Render(string? source) => fixture.Run(() =>
-    {
-        MarkdownView view = new() { Source = source };
-        Window window = new() { Width = 390, Height = 800, Content = view };
-        window.Show();
-        List<string> texts = [.. view.GetVisualDescendants().OfType<TextBlock>().Select(block => block.Inlines is { Count: > 0 } ? Flatten(block.Inlines) : block.Text ?? string.Empty)];
-        window.Close();
-        return texts;
-    });
+    private Task<List<string>> Render(string? source)
+        => fixture.Run(() =>
+        {
+            MarkdownView view = new() { Source = source };
+            Window window = new() { Width = 390, Height = 800, Content = view };
+            window.Show();
+            List<string> texts = [.. view.GetVisualDescendants().OfType<TextBlock>().Select(block => block.Inlines is { Count: > 0 } ? Flatten(block.Inlines) : block.Text ?? string.Empty)];
+            window.Close();
+            return texts;
+        });
 
     [Fact]
     public async Task MarkdownView_RendersHeadingsInlinesListsQuotesCodeAndTables()
@@ -158,7 +160,8 @@ public sealed class ViewTests(HeadlessFixture fixture)
         Assert.Equal(0, outerScrollers);
     }
 
-    private IReadOnlyList<EntryDigest> ManyDigests(int count) => [.. Enumerable.Range(1, count).Select(index => new EntryDigest { Date = new DateOnly(2026, 10, 15).AddDays(-index), Title = $"Title {index}", Summary = $"Summary {index}", Excerpt = $"Excerpt {index}" })];
+    private IReadOnlyList<EntryDigest> ManyDigests(int count)
+        => [.. Enumerable.Range(1, count).Select(index => new EntryDigest { Date = new DateOnly(2026, 10, 15).AddDays(-index), Title = $"Title {index}", Summary = $"Summary {index}", Excerpt = $"Excerpt {index}" })];
 
     private Mock<IServerConnection> ConnectionWith(IReadOnlyList<EntryDigest> digests)
     {
@@ -241,5 +244,45 @@ public sealed class ViewTests(HeadlessFixture fixture)
 
         Assert.Equal(entry, list);
         Assert.True(scrolls);
+    }
+
+    [Theory]
+    [InlineData(390, "2026-09-30")]
+    [InlineData(360, "2026-09-30")]
+    [InlineData(360, "2026-11-10")]
+    [InlineData(320, "2026-09-30")]
+    [InlineData(412, "2026-09-30")]
+    [InlineData(390, "2026-11-10")]
+    [InlineData(390, "2026-10-14")]
+    public async Task JournalHeader_ShowsTheWholeDateEvenWhenItIsLongAndThePhoneIsNarrow(int width, string day)
+    {
+        Mock<IServerConnection> connection = new();
+        connection.Setup(target => target.GetEntry(It.IsAny<DateOnly>(), It.IsAny<CancellationToken>())).ReturnsAsync((JournalEntry?)null);
+        DateOnly today = DateOnly.Parse(day, CultureInfo.InvariantCulture);
+
+        (string text, double needed, double available, double center, int lines, string firstLine) = await fixture.RunAsync(async () =>
+        {
+            JournalViewModel model = new(connection.Object, () => today, Mock.Of<IVoiceRecorder>());
+            await model.Load();
+            JournalView view = new() { DataContext = model };
+            Window window = new() { Width = width, Height = 700, Content = view };
+            window.Show();
+            Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+            AvaloniaHeadlessPlatform.ForceRenderTimerTick();
+            TextBlock title = view.GetVisualDescendants().OfType<TextBlock>().First(block => block.Text == model.SelectedTitle);
+            Border card = view.GetVisualDescendants().OfType<Border>().First(border => border.Classes.Contains("card"));
+            double middle = title.TranslatePoint(new Point(title.Bounds.Width / 2, 0), view)!.Value.X;
+            double result = Math.Ceiling(title.TextLayout.WidthIncludingTrailingWhitespace);
+            double shown = title.Bounds.Width;
+            int count = title.TextLayout.TextLines.Count;
+            string first = model.SelectedTitle[..Math.Min(title.TextLayout.TextLines[0].Length, model.SelectedTitle.Length)].TrimEnd();
+            window.Close();
+            return (model.SelectedTitle, result, shown, Math.Abs(middle - (card.Bounds.X + (card.Bounds.Width / 2))), count, first);
+        });
+
+        Assert.True(needed <= available + 1, $"'{text}' needs {needed}px but only {available}px is shown at width {width}");
+        Assert.True(center <= 2, $"'{text}' is {center}px off the center of the panel");
+        Assert.True(lines <= 2, $"'{text}' needs {lines} lines");
+        Assert.True(lines == 1 || firstLine.EndsWith(",", StringComparison.Ordinal), $"'{text}' wraps in the middle of its month and day: first line '{firstLine}'");
     }
 }

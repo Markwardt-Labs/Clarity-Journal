@@ -28,9 +28,11 @@ public sealed class JournalExportTests : IAsyncLifetime
         return Task.CompletedTask;
     }
 
-    private string Read(string relative) => File.ReadAllText(Path.Combine(export.Folder, relative));
+    private string Read(string relative)
+        => File.ReadAllText(Path.Combine(export.Folder, relative));
 
-    private Summary Summary(SummaryKind kind, string period, string start, string end) => new() { Kind = kind, Period = period, Start = DateOnly.Parse(start, CultureInfo.InvariantCulture), End = DateOnly.Parse(end, CultureInfo.InvariantCulture), Text = $"{kind} summary text", EntryCount = 1, UpdatedAt = at };
+    private Summary Summary(SummaryKind kind, string period, string start, string end)
+        => new() { Kind = kind, Period = period, Start = DateOnly.Parse(start, CultureInfo.InvariantCulture), End = DateOnly.Parse(end, CultureInfo.InvariantCulture), Text = $"{kind} summary text", EntryCount = 1, UpdatedAt = at };
 
     [Fact]
     public async Task WriteEntry_CreatesOneMarkdownFilePerDayUnderItsYear()

@@ -1,0 +1,19 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="Markwardt.ClarityJournal.Client.UpdateDialogView"
+             x:CompileBindings="False">
+  <Border Classes="scrim">
+    <Border Classes="card dialog" Margin="32" MaxWidth="320" VerticalAlignment="Center" HorizontalAlignment="Center">
+      <StackPanel Spacing="8">
+        <TextBlock Text="Update Clarity Journal?" FontWeight="Bold" FontSize="19" HorizontalAlignment="Center" TextAlignment="Center" TextWrapping="Wrap" />
+        <TextBlock Text="{Binding Summary}" Classes="muted" TextWrapping="Wrap" TextAlignment="Center" />
+        <TextBlock Text="{Binding Warning}" IsVisible="{Binding HasWarning}" Classes="muted" FontSize="12" TextWrapping="Wrap" TextAlignment="Center" />
+        <TextBlock Text="{Binding Error}" IsVisible="{Binding HasError}" Classes="error" TextAlignment="Center" />
+        <Grid ColumnDefinitions="*,*" ColumnSpacing="10" Margin="0,12,0,0">
+          <Button Content="{Binding CloseText}" Classes="plain" Command="{Binding CloseCommand}" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" />
+          <Button Grid.Column="1" Content="Update" Classes="pill accent" Command="{Binding ConfirmCommand}" Padding="0,11" HorizontalAlignment="Stretch" />
+        </Grid>
+      </StackPanel>
+    </Border>
+  </Border>
+</UserControl>

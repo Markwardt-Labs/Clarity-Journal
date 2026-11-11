@@ -17,7 +17,7 @@ internal interface IWhisperEngine
     /// <param name="cancellation">Cancels the download.</param>
     /// <returns>A task that completes once the model is ready.</returns>
     /// <exception cref="RequestException">Voice input is turned off, the model name is not valid or the model could not be downloaded.</exception>
-    Task Prepare(CancellationToken cancellation);
+    Task Prepare(CancellationToken cancellation = default);
 
     /// <summary>
     /// Transcribes recorded speech, loading the model if it is not loaded.
@@ -26,7 +26,7 @@ internal interface IWhisperEngine
     /// <param name="cancellation">Cancels the transcription.</param>
     /// <returns>The text, empty when nothing was heard.</returns>
     /// <exception cref="RequestException">Voice input is turned off, the model is missing or cannot be loaded, or the audio is not valid.</exception>
-    Task<string> Transcribe(ReadOnlyMemory<byte> wav, CancellationToken cancellation);
+    Task<string> Transcribe(ReadOnlyMemory<byte> wav, CancellationToken cancellation = default);
 }
 
 /// <inheritdoc />
@@ -55,10 +55,11 @@ internal sealed class WhisperEngine : IWhisperEngine
     private CancellationTokenSource? unloading;
 
     /// <inheritdoc />
-    public void Configure(ServerConfig config) => this.config = config;
+    public void Configure(ServerConfig config)
+        => this.config = config;
 
     /// <inheritdoc />
-    public async Task Prepare(CancellationToken cancellation)
+    public async Task Prepare(CancellationToken cancellation = default)
     {
         await gate.WaitAsync(cancellation);
 
@@ -73,7 +74,7 @@ internal sealed class WhisperEngine : IWhisperEngine
     }
 
     /// <inheritdoc />
-    public async Task<string> Transcribe(ReadOnlyMemory<byte> wav, CancellationToken cancellation)
+    public async Task<string> Transcribe(ReadOnlyMemory<byte> wav, CancellationToken cancellation = default)
     {
         await gate.WaitAsync(cancellation);
 
@@ -115,7 +116,7 @@ internal sealed class WhisperEngine : IWhisperEngine
         }
     }
 
-    private async Task<WhisperFactory> Load(string path, CancellationToken cancellation)
+    private async Task<WhisperFactory> Load(string path, CancellationToken cancellation = default)
     {
         string natives = await ExtractNatives(cancellation);
         object? original = AppContext.GetData(baseDirectory);
@@ -136,7 +137,7 @@ internal sealed class WhisperEngine : IWhisperEngine
         }
     }
 
-    private async Task<string> ExtractNatives(CancellationToken cancellation)
+    private async Task<string> ExtractNatives(CancellationToken cancellation = default)
     {
         string root = Path.Combine(config.DataFolder, "native", typeof(WhisperFactory).Assembly.GetName().Version!.ToString());
         string folder = Path.Combine(root, "runtimes", "vulkan", OperatingSystem.IsWindows() ? "win-x64" : "linux-x64");
@@ -187,7 +188,7 @@ internal sealed class WhisperEngine : IWhisperEngine
         _ = Release(source.Token);
     }
 
-    private async Task Release(CancellationToken cancellation)
+    private async Task Release(CancellationToken cancellation = default)
     {
         try
         {
@@ -210,7 +211,7 @@ internal sealed class WhisperEngine : IWhisperEngine
         }
     }
 
-    private async Task<string> Model(CancellationToken cancellation)
+    private async Task<string> Model(CancellationToken cancellation = default)
     {
         string model = config.SpeechModel?.Trim() ?? string.Empty;
 
@@ -239,7 +240,7 @@ internal sealed class WhisperEngine : IWhisperEngine
         return file;
     }
 
-    private async Task Download(string url, string file, CancellationToken cancellation)
+    private async Task Download(string url, string file, CancellationToken cancellation = default)
     {
         Directory.CreateDirectory(Path.GetDirectoryName(file)!);
         string partial = file + ".download";

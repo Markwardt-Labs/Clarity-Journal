@@ -57,7 +57,8 @@ internal sealed class Prompts : IPrompts
     public string TitleSystem { get; } = "You write a short title and a short summary for one entry of a person's private journal. Reply with only a JSON object of the form {\"title\": \"...\", \"summary\": \"...\"} and nothing else: no code fence and no remarks. The title has two to six words, no quotation marks and no final period, and says what the day was about, not what its date is. The summary is one or two short sentences, at most 35 words together, written to the person in the second person (\"You ...\"), and says only what the entry says.";
 
     /// <inheritdoc />
-    public string Title(JournalEntry entry) => string.Create(CultureInfo.InvariantCulture, $"Write the title and the summary for the journal entry of {entry.Date:yyyy-MM-dd} ({entry.Date.DayOfWeek}).\n\nEntry:\n{entry.Text}");
+    public string Title(JournalEntry entry)
+        => string.Create(CultureInfo.InvariantCulture, $"Write the title and the summary for the journal entry of {entry.Date:yyyy-MM-dd} ({entry.Date.DayOfWeek}).\n\nEntry:\n{entry.Text}");
 
     /// <inheritdoc />
     public string Summary(SummaryPeriod period, string? previous, IReadOnlyList<JournalEntry> entries)
@@ -81,11 +82,12 @@ internal sealed class Prompts : IPrompts
     }
 
     /// <inheritdoc />
-    public string Label(SummaryPeriod period) => period.Kind switch
-    {
-        SummaryKind.Week => $"the week of {period.Start:yyyy-MM-dd} to {period.End:yyyy-MM-dd}",
-        SummaryKind.Month => $"the month {period.Id}",
-        SummaryKind.Year => $"the year {period.Id}",
-        _ => "the person's whole lifetime"
-    };
+    public string Label(SummaryPeriod period)
+        => period.Kind switch
+        {
+            SummaryKind.Week => $"the week of {period.Start:yyyy-MM-dd} to {period.End:yyyy-MM-dd}",
+            SummaryKind.Month => $"the month {period.Id}",
+            SummaryKind.Year => $"the year {period.Id}",
+            _ => "the person's whole lifetime"
+        };
 }

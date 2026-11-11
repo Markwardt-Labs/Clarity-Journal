@@ -11,7 +11,7 @@ internal interface IEntryTitleScheduler
     /// <param name="config">The server settings.</param>
     /// <param name="cancellation">Stops the scheduler.</param>
     /// <returns>A task that completes when cancelled.</returns>
-    Task Run(ServerConfig config, CancellationToken cancellation);
+    Task Run(ServerConfig config, CancellationToken cancellation = default);
 }
 
 /// <inheritdoc />
@@ -23,7 +23,7 @@ internal sealed class EntryTitleScheduler(IEntryTitler titler, TimeProvider time
     private readonly TimeSpan slack = TimeSpan.FromSeconds(5);
 
     /// <inheritdoc />
-    public async Task Run(ServerConfig config, CancellationToken cancellation)
+    public async Task Run(ServerConfig config, CancellationToken cancellation = default)
     {
         try
         {

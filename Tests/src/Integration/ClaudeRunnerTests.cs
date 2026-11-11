@@ -6,7 +6,8 @@ public sealed class ClaudeRunnerTests : IDisposable
 
     private readonly ClaudeRunner runner = new();
 
-    public void Dispose() => temp.Dispose();
+    public void Dispose()
+        => temp.Dispose();
 
     private ServerConfig Script(string body, params string[] extra)
     {
@@ -20,9 +21,11 @@ public sealed class ClaudeRunnerTests : IDisposable
         return new ServerConfig { Key = "k", ClaudeCommand = path, ClaudeArguments = extra, ClaudeTimeoutMinutes = 1 };
     }
 
-    private string Recording(string result) => $"d=\"$(dirname \"$0\")\"\nprintf '%s\\n' \"$@\" > \"$d/args.txt\"\ncat > \"$d/stdin.txt\"\nprintf '%s' \"$CLAUDE_CODE_DISABLE_BACKGROUND_TASKS\" > \"$d/env.txt\"\npwd > \"$d/cwd.txt\"\nprintf '%s' '{result}'";
+    private string Recording(string result)
+        => $"d=\"$(dirname \"$0\")\"\nprintf '%s\\n' \"$@\" > \"$d/args.txt\"\ncat > \"$d/stdin.txt\"\nprintf '%s' \"$CLAUDE_CODE_DISABLE_BACKGROUND_TASKS\" > \"$d/env.txt\"\npwd > \"$d/cwd.txt\"\nprintf '%s' '{result}'";
 
-    private string[] Args() => File.ReadAllLines(temp.Combine("args.txt"));
+    private string[] Args()
+        => File.ReadAllLines(temp.Combine("args.txt"));
 
     [Fact]
     public async Task Run_WithoutTools_SendsThePromptOnStdinAndReturnsTheTrimmedResult()

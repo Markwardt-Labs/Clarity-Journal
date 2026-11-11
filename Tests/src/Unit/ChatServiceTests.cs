@@ -48,7 +48,8 @@ public sealed class ChatServiceTests
         service = new ChatService(chats.Object, meta.Object, claude.Object, new Prompts(), export.Object, events, new FixedTimeProvider(DateTimeOffset.UnixEpoch), Mock.Of<ILog>());
     }
 
-    private void Reply(string text) => claude.Setup(runner => runner.Run(config, It.IsAny<ClaudeRequest>(), It.IsAny<CancellationToken>())).Callback<ServerConfig, ClaudeRequest, CancellationToken>((_, request, _) => requests.Add(request)).ReturnsAsync(text);
+    private void Reply(string text)
+        => claude.Setup(runner => runner.Run(config, It.IsAny<ClaudeRequest>(), It.IsAny<CancellationToken>())).Callback<ServerConfig, ClaudeRequest, CancellationToken>((_, request, _) => requests.Add(request)).ReturnsAsync(text);
 
     private List<RemoteEvent> Published()
     {

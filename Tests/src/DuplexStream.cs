@@ -20,11 +20,15 @@ public sealed class DuplexStream(byte[] incoming) : Stream
     {
     }
 
-    public override int Read(byte[] buffer, int offset, int count) => reader.Read(buffer, offset, count);
+    public override int Read(byte[] buffer, int offset, int count)
+        => reader.Read(buffer, offset, count);
 
-    public override long Seek(long offset, SeekOrigin origin) => throw new NotSupportedException();
+    public override long Seek(long offset, SeekOrigin origin)
+        => throw new NotSupportedException();
 
-    public override void SetLength(long value) => throw new NotSupportedException();
+    public override void SetLength(long value)
+        => throw new NotSupportedException();
 
-    public override void Write(byte[] buffer, int offset, int count) => Written.Write(buffer, offset, count);
+    public override void Write(byte[] buffer, int offset, int count)
+        => Written.Write(buffer, offset, count);
 }

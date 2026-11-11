@@ -21,7 +21,7 @@ internal interface IConnectionServer
     /// <param name="config">The server settings.</param>
     /// <param name="cancellation">Stops the server.</param>
     /// <exception cref="SocketException">The port could not be bound.</exception>
-    Task Run(ServerConfig config, CancellationToken cancellation);
+    Task Run(ServerConfig config, CancellationToken cancellation = default);
 }
 
 /// <inheritdoc />
@@ -36,7 +36,7 @@ internal sealed class ConnectionServer(IHandshake handshake, IMessageChannel.IFa
     public event Action<string>? Certified;
 
     /// <inheritdoc />
-    public async Task Run(ServerConfig config, CancellationToken cancellation)
+    public async Task Run(ServerConfig config, CancellationToken cancellation = default)
     {
         using X509Certificate2 certificate = await certificates.Load(config, cancellation);
         Certified?.Invoke(Convert.ToHexString(certificate.GetCertHash(HashAlgorithmName.SHA256)));
@@ -57,7 +57,7 @@ internal sealed class ConnectionServer(IHandshake handshake, IMessageChannel.IFa
         }
     }
 
-    private async Task Accept(TcpListener listener, string accessKey, X509Certificate2 certificate, CancellationToken cancellation)
+    private async Task Accept(TcpListener listener, string accessKey, X509Certificate2 certificate, CancellationToken cancellation = default)
     {
         while (true)
         {
@@ -66,7 +66,7 @@ internal sealed class ConnectionServer(IHandshake handshake, IMessageChannel.IFa
         }
     }
 
-    private async Task Serve(TcpClient client, string accessKey, X509Certificate2 certificate, CancellationToken cancellation)
+    private async Task Serve(TcpClient client, string accessKey, X509Certificate2 certificate, CancellationToken cancellation = default)
     {
         string remote = $"{client.Client.RemoteEndPoint}";
         log.Write($"Connection from {remote}");
@@ -130,7 +130,7 @@ internal sealed class ConnectionServer(IHandshake handshake, IMessageChannel.IFa
         }
     }
 
-    private async Task Push(IMessageChannel channel, SemaphoreSlim writing, ChannelReader<RemoteEvent> events, CancellationToken cancellation)
+    private async Task Push(IMessageChannel channel, SemaphoreSlim writing, ChannelReader<RemoteEvent> events, CancellationToken cancellation = default)
     {
         try
         {
@@ -144,7 +144,7 @@ internal sealed class ConnectionServer(IHandshake handshake, IMessageChannel.IFa
         }
     }
 
-    private async Task Respond(IMessageChannel channel, SemaphoreSlim writing, RemoteRequest request, CancellationToken cancellation)
+    private async Task Respond(IMessageChannel channel, SemaphoreSlim writing, RemoteRequest request, CancellationToken cancellation = default)
     {
         RemoteResponse response;
 
@@ -161,7 +161,7 @@ internal sealed class ConnectionServer(IHandshake handshake, IMessageChannel.IFa
         await Write(channel, writing, response, cancellation);
     }
 
-    private async Task Write(IMessageChannel channel, SemaphoreSlim writing, RemoteResponse response, CancellationToken cancellation)
+    private async Task Write(IMessageChannel channel, SemaphoreSlim writing, RemoteResponse response, CancellationToken cancellation = default)
     {
         try
         {

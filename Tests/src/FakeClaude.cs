@@ -2,7 +2,8 @@ namespace Markwardt.ClarityJournal.Tests;
 
 internal sealed class FakeClaude : IClaudeRunner
 {
-    public FakeClaude() => Reply = request => request.SystemPrompt == new Prompts().TitleSystem ? Title(request) : request.Tools.Count == 0 ? $"Summary {Requests.Count}" : $"You asked: {request.Prompt}";
+    public FakeClaude()
+        => Reply = request => request.SystemPrompt == new Prompts().TitleSystem ? Title(request) : request.Tools.Count == 0 ? $"Summary {Requests.Count}" : $"You asked: {request.Prompt}";
 
     private readonly object gate = new();
 
@@ -31,7 +32,7 @@ internal sealed class FakeClaude : IClaudeRunner
         }
     }
 
-    public Task<string> Run(ServerConfig config, ClaudeRequest request, CancellationToken cancellation)
+    public Task<string> Run(ServerConfig config, ClaudeRequest request, CancellationToken cancellation = default)
     {
         lock (gate)
         {

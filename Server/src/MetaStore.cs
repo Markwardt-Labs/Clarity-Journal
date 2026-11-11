@@ -11,7 +11,7 @@ internal interface IMetaStore
     /// <param name="key">The name of the value.</param>
     /// <param name="cancellation">Cancels the read.</param>
     /// <returns>The value, or <see langword="null" /> if it was never set.</returns>
-    Task<string?> Get(string key, CancellationToken cancellation);
+    Task<string?> Get(string key, CancellationToken cancellation = default);
 
     /// <summary>
     /// Writes a value, replacing the one the key already has.
@@ -19,21 +19,21 @@ internal interface IMetaStore
     /// <param name="key">The name of the value.</param>
     /// <param name="value">The value.</param>
     /// <param name="cancellation">Cancels the write.</param>
-    Task Set(string key, string value, CancellationToken cancellation);
+    Task Set(string key, string value, CancellationToken cancellation = default);
 
     /// <summary>
     /// Removes a value.
     /// </summary>
     /// <param name="key">The name of the value.</param>
     /// <param name="cancellation">Cancels the write.</param>
-    Task Remove(string key, CancellationToken cancellation);
+    Task Remove(string key, CancellationToken cancellation = default);
 }
 
 /// <inheritdoc />
 internal sealed class MetaStore(IDatabase database) : IMetaStore
 {
     /// <inheritdoc />
-    public async Task<string?> Get(string key, CancellationToken cancellation)
+    public async Task<string?> Get(string key, CancellationToken cancellation = default)
     {
         await using SqliteConnection connection = await database.Open(cancellation);
         await using SqliteCommand command = connection.CreateCommand();
@@ -43,7 +43,7 @@ internal sealed class MetaStore(IDatabase database) : IMetaStore
     }
 
     /// <inheritdoc />
-    public async Task Set(string key, string value, CancellationToken cancellation)
+    public async Task Set(string key, string value, CancellationToken cancellation = default)
     {
         await using SqliteConnection connection = await database.Open(cancellation);
         await using SqliteCommand command = connection.CreateCommand();
@@ -54,7 +54,7 @@ internal sealed class MetaStore(IDatabase database) : IMetaStore
     }
 
     /// <inheritdoc />
-    public async Task Remove(string key, CancellationToken cancellation)
+    public async Task Remove(string key, CancellationToken cancellation = default)
     {
         await using SqliteConnection connection = await database.Open(cancellation);
         await using SqliteCommand command = connection.CreateCommand();

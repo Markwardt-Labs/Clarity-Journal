@@ -40,7 +40,8 @@ public sealed class EndToEndTests : IAsyncLifetime
         return open;
     }
 
-    private DateOnly Day(string date) => DateOnly.Parse(date, CultureInfo.InvariantCulture);
+    private DateOnly Day(string date)
+        => DateOnly.Parse(date, CultureInfo.InvariantCulture);
 
     [Fact]
     public async Task Entries_RoundTripAndAreOnePerDay()
@@ -145,7 +146,8 @@ public sealed class EndToEndTests : IAsyncLifetime
         Assert.Fail("Timed out waiting.");
     }
 
-    private FixedTimeProvider At(string moment) => new(DateTimeOffset.Parse(moment, CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal));
+    private FixedTimeProvider At(string moment)
+        => new(DateTimeOffset.Parse(moment, CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal));
 
     [Fact]
     public async Task Summaries_AreWrittenWhenTheServerStartsAfterAFridayEveningAndBuildOnThePreviousOnes()
@@ -258,7 +260,8 @@ public sealed class EndToEndTests : IAsyncLifetime
         Assert.Single(await retry.GetSummaries(SummaryKind.Week, CancellationToken.None));
     }
 
-    private async Task<IReadOnlyList<EntryDigest>> Digests(IServerConnection open) => await open.ListDigests(null, 50, CancellationToken.None);
+    private async Task<IReadOnlyList<EntryDigest>> Digests(IServerConnection open)
+        => await open.ListDigests(null, 50, CancellationToken.None);
 
     [Fact]
     public async Task Titles_AreWrittenAtStartupForEveryFinishedDayThatLacksOneButNeverForToday()

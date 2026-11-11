@@ -51,5 +51,6 @@ internal sealed class SummarySchedule : ISummarySchedule
         return candidate;
     }
 
-    private DateTime Friday(DateTime day, TimeOnly time) => day.AddDays(((int)DayOfWeek.Friday - (int)day.DayOfWeek + 7) % 7).Add(time.ToTimeSpan());
+    private DateTime Friday(DateTime day, TimeOnly time)
+        => day.AddDays(((int)DayOfWeek.Friday - (int)day.DayOfWeek + 7) % 7).Add(time.ToTimeSpan());
 }

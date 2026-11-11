@@ -11,7 +11,7 @@ internal interface IWebSocketUpgrade
     /// <param name="stream">The secured connection to the client.</param>
     /// <param name="cancellation">Cancels the negotiation.</param>
     /// <returns>The stream the access key handshake continues on, or <see langword="null" /> if the client sent nothing in time or something other than an upgrade request.</returns>
-    Task<Stream?> Accept(Stream stream, CancellationToken cancellation);
+    Task<Stream?> Accept(Stream stream, CancellationToken cancellation = default);
 }
 
 /// <inheritdoc />
@@ -26,7 +26,7 @@ internal sealed class WebSocketUpgrade : IWebSocketUpgrade
     private readonly string magic = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11";
 
     /// <inheritdoc />
-    public async Task<Stream?> Accept(Stream stream, CancellationToken cancellation)
+    public async Task<Stream?> Accept(Stream stream, CancellationToken cancellation = default)
     {
         using CancellationTokenSource limit = CancellationTokenSource.CreateLinkedTokenSource(cancellation);
         limit.CancelAfter(timeout);
@@ -81,7 +81,7 @@ internal sealed class WebSocketUpgrade : IWebSocketUpgrade
         return upgrade && headers.TryGetValue("Sec-WebSocket-Key", out string? key) && key.Length > 0 ? key : null;
     }
 
-    private async Task<string?> ReadRequest(Stream stream, CancellationToken cancellation)
+    private async Task<string?> ReadRequest(Stream stream, CancellationToken cancellation = default)
     {
         List<byte> request = [];
         byte[] buffer = new byte[1];

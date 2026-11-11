@@ -12,7 +12,8 @@ public sealed class ChatViewModelTests
         model = new ChatViewModel(connection.Object);
     }
 
-    private ChatMessage Message(long id, ChatRole role, string text) => new() { Id = id, Role = role, Text = text, At = new DateTimeOffset(2026, 10, 16, 20, 5, 0, TimeSpan.Zero) };
+    private ChatMessage Message(long id, ChatRole role, string text)
+        => new() { Id = id, Role = role, Text = text, At = new DateTimeOffset(2026, 10, 16, 20, 5, 0, TimeSpan.Zero) };
 
     [Fact]
     public async Task Load_ShowsTheMessagesAndWhetherAnAnswerIsComing()

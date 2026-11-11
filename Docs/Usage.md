@@ -62,6 +62,14 @@ Run it as the user that is signed in to Claude Code, because the server starts `
 
 A systemd user service needs no root and does the same: put the unit in `~/.config/systemd/user/clarity-journal.service` with `ExecStart=%h/.local/opt/clarity-journal/Markwardt.ClarityJournal.Server %h/.config/clarity-journal/config.json` and an `Environment=PATH=%h/.local/bin:/usr/local/bin:/usr/bin:/bin` line, then run `systemctl --user enable --now clarity-journal` and, so it also runs when nobody is logged in, `loginctl enable-linger $USER`. Read its output with `journalctl --user -u clarity-journal`. To update, replace the executable and run `systemctl --user restart clarity-journal`.
 
+## Updating
+
+The app offers an update in Options when the newest GitHub release is newer than the app or the server, and one confirmation updates the server first and then the app: the server downloads the new version, restarts, and the app downloads its package and opens the system installer. The first time, Android asks to allow Clarity Journal to install apps. Save any other work first: the server's restart interrupts a summary or a chat answer that is being written.
+
+Two things have to be true on the server's machine for it to update itself: it must run from its own executable (not through `dotnet run`), and, if it runs as a service, the service must restart it after it exits, as `Restart=on-failure` in the unit above does. The folder of the executable must be writable by the server's user. A release has to carry the three files the release workflow produces (`ClarityJournal-Server-linux`, `ClarityJournal-Server-win.exe`, `ClarityJournal.apk`); the lookup needs no GitHub login while the repository is public.
+
+The release that first contains updating is installed by hand once; every release after it can update itself.
+
 ## Connecting the app
 
 Enter the server's address, the port and the key. When the server presents its own self-signed certificate, the first connection trusts it and remembers its fingerprint; compare it with the one the server printed if you want to be certain. A later connection that presents a different certificate is refused, and the app offers "Trust new certificate" for when you replaced it on purpose. A certificate that a public authority vouches for, as with a hostname behind Cloudflare below, is trusted like any website's and is not pinned, because such certificates are renewed regularly.

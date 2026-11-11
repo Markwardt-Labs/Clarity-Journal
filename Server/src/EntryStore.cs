@@ -11,7 +11,7 @@ internal interface IEntryStore
     /// <param name="date">The day.</param>
     /// <param name="cancellation">Cancels the read.</param>
     /// <returns>The entry, or <see langword="null" /> if the day has none.</returns>
-    Task<JournalEntry?> Get(DateOnly date, CancellationToken cancellation);
+    Task<JournalEntry?> Get(DateOnly date, CancellationToken cancellation = default);
 
     /// <summary>
     /// Lists the entries between two days, both included.
@@ -20,7 +20,7 @@ internal interface IEntryStore
     /// <param name="to">The last day, or <see langword="null" /> for no upper bound.</param>
     /// <param name="cancellation">Cancels the read.</param>
     /// <returns>The entries, oldest first.</returns>
-    Task<IReadOnlyList<JournalEntry>> List(DateOnly? from, DateOnly? to, CancellationToken cancellation);
+    Task<IReadOnlyList<JournalEntry>> List(DateOnly? from, DateOnly? to, CancellationToken cancellation = default);
 
     /// <summary>
     /// Counts the entries between two days, both included.
@@ -29,7 +29,7 @@ internal interface IEntryStore
     /// <param name="to">The last day, or <see langword="null" /> for no upper bound.</param>
     /// <param name="cancellation">Cancels the read.</param>
     /// <returns>The number of entries.</returns>
-    Task<int> Count(DateOnly? from, DateOnly? to, CancellationToken cancellation);
+    Task<int> Count(DateOnly? from, DateOnly? to, CancellationToken cancellation = default);
 
     /// <summary>
     /// Writes the entry of a day, replacing the one it has, and gives the save the next revision. When the text differs from the stored one the title and summary are cleared, since they described the old words; the same text keeps them.
@@ -39,7 +39,7 @@ internal interface IEntryStore
     /// <param name="at">When the entry is saved.</param>
     /// <param name="cancellation">Cancels the write.</param>
     /// <returns>The stored entry.</returns>
-    Task<JournalEntry> Save(DateOnly date, string text, DateTimeOffset at, CancellationToken cancellation);
+    Task<JournalEntry> Save(DateOnly date, string text, DateTimeOffset at, CancellationToken cancellation = default);
 
     /// <summary>
     /// Deletes the entry of a day.
@@ -47,7 +47,7 @@ internal interface IEntryStore
     /// <param name="date">The day.</param>
     /// <param name="cancellation">Cancels the write.</param>
     /// <returns><see langword="true" /> if the day had an entry.</returns>
-    Task<bool> Delete(DateOnly date, CancellationToken cancellation);
+    Task<bool> Delete(DateOnly date, CancellationToken cancellation = default);
 
     /// <summary>
     /// Reads what a list shows of the entry of a day.
@@ -55,7 +55,7 @@ internal interface IEntryStore
     /// <param name="date">The day.</param>
     /// <param name="cancellation">Cancels the read.</param>
     /// <returns>The digest, or <see langword="null" /> if the day has no entry.</returns>
-    Task<EntryDigest?> GetDigest(DateOnly date, CancellationToken cancellation);
+    Task<EntryDigest?> GetDigest(DateOnly date, CancellationToken cancellation = default);
 
     /// <summary>
     /// Lists what a list shows of the days that have an entry, newest first, one page at a time.
@@ -64,7 +64,7 @@ internal interface IEntryStore
     /// <param name="limit">How many days at most.</param>
     /// <param name="cancellation">Cancels the read.</param>
     /// <returns>The digests, newest first.</returns>
-    Task<IReadOnlyList<EntryDigest>> ListDigests(DateOnly? before, int limit, CancellationToken cancellation);
+    Task<IReadOnlyList<EntryDigest>> ListDigests(DateOnly? before, int limit, CancellationToken cancellation = default);
 
     /// <summary>
     /// Lists the entries of days before a day that lack a title or a summary, which is what still needs generating.
@@ -72,7 +72,7 @@ internal interface IEntryStore
     /// <param name="before">The day before which entries are listed; today, because a day is only titled once it is over.</param>
     /// <param name="cancellation">Cancels the read.</param>
     /// <returns>The entries, newest first.</returns>
-    Task<IReadOnlyList<JournalEntry>> ListUntitled(DateOnly before, CancellationToken cancellation);
+    Task<IReadOnlyList<JournalEntry>> ListUntitled(DateOnly before, CancellationToken cancellation = default);
 
     /// <summary>
     /// Stores the title and summary of an entry, without counting as a save: summaries do not read the entry again for it.
@@ -83,7 +83,7 @@ internal interface IEntryStore
     /// <param name="summary">The summary.</param>
     /// <param name="cancellation">Cancels the write.</param>
     /// <returns><see langword="true" /> if they were stored.</returns>
-    Task<bool> SetDigest(DateOnly date, string text, string title, string summary, CancellationToken cancellation);
+    Task<bool> SetDigest(DateOnly date, string text, string title, string summary, CancellationToken cancellation = default);
 
     /// <summary>
     /// Lists the entries saved after a revision, which is how summaries find what is new without reading the whole journal.
@@ -92,14 +92,14 @@ internal interface IEntryStore
     /// <param name="through">The last revision listed.</param>
     /// <param name="cancellation">Cancels the read.</param>
     /// <returns>The entries, ordered by revision.</returns>
-    Task<IReadOnlyList<RevisedEntry>> ListSince(long after, long through, CancellationToken cancellation);
+    Task<IReadOnlyList<RevisedEntry>> ListSince(long after, long through, CancellationToken cancellation = default);
 
     /// <summary>
     /// Reads the revision of the latest save.
     /// </summary>
     /// <param name="cancellation">Cancels the read.</param>
     /// <returns>The revision, or zero if nothing was ever saved.</returns>
-    Task<long> LatestRevision(CancellationToken cancellation);
+    Task<long> LatestRevision(CancellationToken cancellation = default);
 }
 
 /// <inheritdoc />
@@ -112,7 +112,7 @@ internal sealed class EntryStore(IDatabase database) : IEntryStore
     private readonly string selectDigest = "SELECT date, title, summary, substr(text, 1, 400) FROM entries";
 
     /// <inheritdoc />
-    public async Task<JournalEntry?> Get(DateOnly date, CancellationToken cancellation)
+    public async Task<JournalEntry?> Get(DateOnly date, CancellationToken cancellation = default)
     {
         await using SqliteConnection connection = await database.Open(cancellation);
         await using SqliteCommand command = connection.CreateCommand();
@@ -123,7 +123,7 @@ internal sealed class EntryStore(IDatabase database) : IEntryStore
     }
 
     /// <inheritdoc />
-    public async Task<IReadOnlyList<JournalEntry>> List(DateOnly? from, DateOnly? to, CancellationToken cancellation)
+    public async Task<IReadOnlyList<JournalEntry>> List(DateOnly? from, DateOnly? to, CancellationToken cancellation = default)
     {
         await using SqliteConnection connection = await database.Open(cancellation);
         await using SqliteCommand command = connection.CreateCommand();
@@ -133,7 +133,7 @@ internal sealed class EntryStore(IDatabase database) : IEntryStore
     }
 
     /// <inheritdoc />
-    public async Task<int> Count(DateOnly? from, DateOnly? to, CancellationToken cancellation)
+    public async Task<int> Count(DateOnly? from, DateOnly? to, CancellationToken cancellation = default)
     {
         await using SqliteConnection connection = await database.Open(cancellation);
         await using SqliteCommand command = connection.CreateCommand();
@@ -143,7 +143,7 @@ internal sealed class EntryStore(IDatabase database) : IEntryStore
     }
 
     /// <inheritdoc />
-    public async Task<JournalEntry> Save(DateOnly date, string text, DateTimeOffset at, CancellationToken cancellation)
+    public async Task<JournalEntry> Save(DateOnly date, string text, DateTimeOffset at, CancellationToken cancellation = default)
     {
         await using SqliteConnection connection = await database.Open(cancellation);
         await using SqliteTransaction transaction = (SqliteTransaction)await connection.BeginTransactionAsync(cancellation);
@@ -167,7 +167,7 @@ internal sealed class EntryStore(IDatabase database) : IEntryStore
     }
 
     /// <inheritdoc />
-    public async Task<bool> Delete(DateOnly date, CancellationToken cancellation)
+    public async Task<bool> Delete(DateOnly date, CancellationToken cancellation = default)
     {
         await using SqliteConnection connection = await database.Open(cancellation);
         await using SqliteCommand command = connection.CreateCommand();
@@ -177,7 +177,7 @@ internal sealed class EntryStore(IDatabase database) : IEntryStore
     }
 
     /// <inheritdoc />
-    public async Task<EntryDigest?> GetDigest(DateOnly date, CancellationToken cancellation)
+    public async Task<EntryDigest?> GetDigest(DateOnly date, CancellationToken cancellation = default)
     {
         await using SqliteConnection connection = await database.Open(cancellation);
         await using SqliteCommand command = connection.CreateCommand();
@@ -188,7 +188,7 @@ internal sealed class EntryStore(IDatabase database) : IEntryStore
     }
 
     /// <inheritdoc />
-    public async Task<IReadOnlyList<EntryDigest>> ListDigests(DateOnly? before, int limit, CancellationToken cancellation)
+    public async Task<IReadOnlyList<EntryDigest>> ListDigests(DateOnly? before, int limit, CancellationToken cancellation = default)
     {
         await using SqliteConnection connection = await database.Open(cancellation);
         await using SqliteCommand command = connection.CreateCommand();
@@ -207,7 +207,7 @@ internal sealed class EntryStore(IDatabase database) : IEntryStore
     }
 
     /// <inheritdoc />
-    public async Task<IReadOnlyList<JournalEntry>> ListUntitled(DateOnly before, CancellationToken cancellation)
+    public async Task<IReadOnlyList<JournalEntry>> ListUntitled(DateOnly before, CancellationToken cancellation = default)
     {
         await using SqliteConnection connection = await database.Open(cancellation);
         await using SqliteCommand command = connection.CreateCommand();
@@ -217,7 +217,7 @@ internal sealed class EntryStore(IDatabase database) : IEntryStore
     }
 
     /// <inheritdoc />
-    public async Task<bool> SetDigest(DateOnly date, string text, string title, string summary, CancellationToken cancellation)
+    public async Task<bool> SetDigest(DateOnly date, string text, string title, string summary, CancellationToken cancellation = default)
     {
         await using SqliteConnection connection = await database.Open(cancellation);
         await using SqliteCommand command = connection.CreateCommand();
@@ -230,7 +230,7 @@ internal sealed class EntryStore(IDatabase database) : IEntryStore
     }
 
     /// <inheritdoc />
-    public async Task<IReadOnlyList<RevisedEntry>> ListSince(long after, long through, CancellationToken cancellation)
+    public async Task<IReadOnlyList<RevisedEntry>> ListSince(long after, long through, CancellationToken cancellation = default)
     {
         await using SqliteConnection connection = await database.Open(cancellation);
         await using SqliteCommand command = connection.CreateCommand();
@@ -241,7 +241,7 @@ internal sealed class EntryStore(IDatabase database) : IEntryStore
     }
 
     /// <inheritdoc />
-    public async Task<long> LatestRevision(CancellationToken cancellation)
+    public async Task<long> LatestRevision(CancellationToken cancellation = default)
     {
         await using SqliteConnection connection = await database.Open(cancellation);
         await using SqliteCommand command = connection.CreateCommand();
@@ -249,7 +249,8 @@ internal sealed class EntryStore(IDatabase database) : IEntryStore
         return Convert.ToInt64(await command.ExecuteScalarAsync(cancellation), CultureInfo.InvariantCulture);
     }
 
-    private string Format(DateOnly date) => date.ToString(dateFormat, CultureInfo.InvariantCulture);
+    private string Format(DateOnly date)
+        => date.ToString(dateFormat, CultureInfo.InvariantCulture);
 
     private void Bind(SqliteCommand command, DateOnly? from, DateOnly? to)
     {
@@ -257,26 +258,28 @@ internal sealed class EntryStore(IDatabase database) : IEntryStore
         command.Parameters.AddWithValue("$to", to is { } last ? Format(last) : DBNull.Value);
     }
 
-    private EntryDigest ReadDigest(SqliteDataReader reader) => new()
-    {
-        Date = DateOnly.ParseExact(reader.GetString(0), dateFormat, CultureInfo.InvariantCulture),
-        Title = reader.IsDBNull(1) ? null : reader.GetString(1),
-        Summary = reader.IsDBNull(2) ? null : reader.GetString(2),
-        Excerpt = reader.GetString(3).ToExcerpt()
-    };
-
-    private RevisedEntry Read(SqliteDataReader reader) => new()
-    {
-        Entry = new JournalEntry
+    private EntryDigest ReadDigest(SqliteDataReader reader)
+        => new()
         {
             Date = DateOnly.ParseExact(reader.GetString(0), dateFormat, CultureInfo.InvariantCulture),
-            Text = reader.GetString(1),
-            UpdatedAt = DateTimeOffset.Parse(reader.GetString(2), CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind)
-        },
-        Revision = reader.GetInt64(3)
-    };
+            Title = reader.IsDBNull(1) ? null : reader.GetString(1),
+            Summary = reader.IsDBNull(2) ? null : reader.GetString(2),
+            Excerpt = reader.GetString(3).ToExcerpt()
+        };
 
-    private async Task<IReadOnlyList<RevisedEntry>> ReadAll(SqliteCommand command, CancellationToken cancellation)
+    private RevisedEntry Read(SqliteDataReader reader)
+        => new()
+        {
+            Entry = new JournalEntry
+            {
+                Date = DateOnly.ParseExact(reader.GetString(0), dateFormat, CultureInfo.InvariantCulture),
+                Text = reader.GetString(1),
+                UpdatedAt = DateTimeOffset.Parse(reader.GetString(2), CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind)
+            },
+            Revision = reader.GetInt64(3)
+        };
+
+    private async Task<IReadOnlyList<RevisedEntry>> ReadAll(SqliteCommand command, CancellationToken cancellation = default)
     {
         List<RevisedEntry> entries = [];
         await using SqliteDataReader reader = await command.ExecuteReaderAsync(cancellation);

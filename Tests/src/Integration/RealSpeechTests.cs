@@ -8,7 +8,8 @@ public sealed class RealSpeechTests(Xunit.Abstractions.ITestOutputHelper output)
 
     private readonly string? wav = Environment.GetEnvironmentVariable("CLARITY_REAL_WHISPER_WAV");
 
-    public void Dispose() => temp.Dispose();
+    public void Dispose()
+        => temp.Dispose();
 
     [Fact]
     public async Task Transcribe_TheRealWhisperModelTurnsARecordingIntoItsWords()

@@ -25,9 +25,11 @@ public sealed class JournalViewModelTests
         model = new JournalViewModel(connection.Object, () => today);
     }
 
-    private DateOnly Day(string date) => DateOnly.Parse(date, CultureInfo.InvariantCulture);
+    private DateOnly Day(string date)
+        => DateOnly.Parse(date, CultureInfo.InvariantCulture);
 
-    private JournalEntry Entry(DateOnly date, string text) => new() { Date = date, Text = text, UpdatedAt = new DateTimeOffset(2026, 10, 16, 21, 5, 0, TimeSpan.Zero) };
+    private JournalEntry Entry(DateOnly date, string text)
+        => new() { Date = date, Text = text, UpdatedAt = new DateTimeOffset(2026, 10, 16, 21, 5, 0, TimeSpan.Zero) };
 
     private void Past(string date, string text, string? title = null, string? summary = null)
     {
@@ -36,7 +38,8 @@ public sealed class JournalViewModelTests
         digests.Add(new EntryDigest { Date = day, Title = title, Summary = summary, Excerpt = text });
     }
 
-    private EntryRowViewModel Row(string date) => model.Rows.Single(row => row.Date == Day(date));
+    private EntryRowViewModel Row(string date)
+        => model.Rows.Single(row => row.Date == Day(date));
 
     private async Task OpenList()
     {
@@ -54,7 +57,7 @@ public sealed class JournalViewModelTests
         Assert.False(model.IsListOpen);
         Assert.True(model.IsEntryOpen);
         Assert.Equal(today, model.SelectedDate);
-        Assert.Equal("Friday, October 16", model.SelectedTitle);
+        Assert.Equal("Friday, October\u00A016", model.SelectedTitle);
         Assert.Equal("Today's words", model.EntryText);
         Assert.True(model.CanEdit);
         Assert.False(model.IsReadOnly);
@@ -214,7 +217,7 @@ public sealed class JournalViewModelTests
         Assert.False(model.IsListOpen);
         Assert.True(model.IsEntryOpen);
         Assert.Equal(Day("2026-10-14"), model.SelectedDate);
-        Assert.Equal("Wednesday, October 14", model.SelectedTitle);
+        Assert.Equal("Wednesday, October\u00A014", model.SelectedTitle);
         Assert.Equal("Wednesday text", model.EntryText);
         Assert.True(model.IsReadOnly);
         Assert.False(model.CanEdit);
@@ -641,7 +644,8 @@ public sealed class EntryRowViewModelTests
 {
     private readonly DateOnly today = new(2026, 10, 16);
 
-    private EntryRowViewModel Row(DateOnly date) => new(date, today, false, new AsyncCommand(_ => Task.CompletedTask));
+    private EntryRowViewModel Row(DateOnly date)
+        => new(date, today, false, new AsyncCommand(_ => Task.CompletedTask));
 
     [Theory]
     [InlineData("2026-10-16", "Today")]

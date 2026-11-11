@@ -11,14 +11,14 @@ internal interface IApplication
     /// <param name="args">The command line arguments; the first, if any, is the config file path (default <c>config.json</c>).</param>
     /// <param name="cancellation">Cancels the run.</param>
     /// <returns>The process exit code.</returns>
-    Task<int> Run(IReadOnlyList<string> args, CancellationToken cancellation);
+    Task<int> Run(IReadOnlyList<string> args, CancellationToken cancellation = default);
 }
 
 /// <inheritdoc />
 internal sealed class Application(IAppInfo info, IConfigLoader configLoader, IRequestHandler requestHandler, ISummaryScheduler scheduler, IChatRetention retention, IEntryTitleScheduler titles, IConnectionServer connectionServer, TextWriter output) : IApplication
 {
     /// <inheritdoc />
-    public async Task<int> Run(IReadOnlyList<string> args, CancellationToken cancellation)
+    public async Task<int> Run(IReadOnlyList<string> args, CancellationToken cancellation = default)
     {
         await output.WriteLineAsync($"{info.Name} server {info.Version}".AsMemory(), cancellation);
 

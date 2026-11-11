@@ -43,6 +43,7 @@ internal sealed class EventHub : IEventHub
 
     private sealed class Subscription(Action stop) : IDisposable
     {
-        public void Dispose() => stop();
+        public void Dispose()
+            => stop();
     }
 }

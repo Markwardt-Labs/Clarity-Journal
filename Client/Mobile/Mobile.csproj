@@ -16,6 +16,14 @@
     <AndroidManifest>AndroidManifest.xml</AndroidManifest>
   </PropertyGroup>
 
+  <PropertyGroup Condition="'$(Version)' != ''">
+    <ReleaseNumbers>$([System.Text.RegularExpressions.Regex]::Match('$(Version)', '^[0-9]+\.[0-9]+\.[0-9]+').Value)</ReleaseNumbers>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(ReleaseNumbers)' != ''">
+    <ApplicationVersion>$([MSBuild]::Add($([MSBuild]::Add($([MSBuild]::Multiply($(ReleaseNumbers.Split('.')[0]), 1000000)), $([MSBuild]::Multiply($(ReleaseNumbers.Split('.')[1]), 1000)))), $(ReleaseNumbers.Split('.')[2])))</ApplicationVersion>
+  </PropertyGroup>
+
   <ItemGroup>
     <ProjectReference Include="..\..\Core\Core.csproj" GlobalPropertiesToRemove="RuntimeIdentifier" />
     <ProjectReference Include="..\Frontend\Frontend.csproj" GlobalPropertiesToRemove="RuntimeIdentifier" />

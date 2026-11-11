@@ -6,9 +6,11 @@ public sealed class WhisperEngineTests : IDisposable
 
     private readonly WhisperEngine engine = new();
 
-    public void Dispose() => temp.Dispose();
+    public void Dispose()
+        => temp.Dispose();
 
-    private void Use(string? model) => engine.Configure(new ServerConfig { Port = 1, Key = "k", DataFolder = temp.Path, SpeechModel = model });
+    private void Use(string? model)
+        => engine.Configure(new ServerConfig { Port = 1, Key = "k", DataFolder = temp.Path, SpeechModel = model });
 
     [Theory]
     [InlineData("")]

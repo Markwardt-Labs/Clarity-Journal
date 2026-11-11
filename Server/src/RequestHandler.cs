@@ -10,7 +10,7 @@ internal interface IRequestHandler
     /// </summary>
     /// <param name="config">The server settings.</param>
     /// <param name="cancellation">Cancels the setup.</param>
-    Task Open(ServerConfig config, CancellationToken cancellation);
+    Task Open(ServerConfig config, CancellationToken cancellation = default);
 
     /// <summary>
     /// Carries out one request; failures are reported in the response instead of thrown.
@@ -18,16 +18,16 @@ internal interface IRequestHandler
     /// <param name="request">The client request.</param>
     /// <param name="cancellation">Cancels the request; also ends the background work the request starts, so it is the server's lifetime.</param>
     /// <returns>The response to send back.</returns>
-    Task<RemoteResponse> Handle(RemoteRequest request, CancellationToken cancellation);
+    Task<RemoteResponse> Handle(RemoteRequest request, CancellationToken cancellation = default);
 }
 
 /// <inheritdoc />
-internal sealed class RequestHandler(IDatabase database, IJournalExport export, IJournalService journal, ISummaryStore summaries, IChatService chat, ISpeechService speech) : IRequestHandler
+internal sealed class RequestHandler(IDatabase database, IJournalExport export, IJournalService journal, ISummaryStore summaries, IChatService chat, ISpeechService speech, IServerUpdater updater) : IRequestHandler
 {
     private ServerConfig? config;
 
     /// <inheritdoc />
-    public async Task Open(ServerConfig config, CancellationToken cancellation)
+    public async Task Open(ServerConfig config, CancellationToken cancellation = default)
     {
         this.config = config;
         speech.Configure(config);
@@ -36,7 +36,7 @@ internal sealed class RequestHandler(IDatabase database, IJournalExport export, 
     }
 
     /// <inheritdoc />
-    public async Task<RemoteResponse> Handle(RemoteRequest request, CancellationToken cancellation)
+    public async Task<RemoteResponse> Handle(RemoteRequest request, CancellationToken cancellation = default)
     {
         ServerConfig current = config ?? throw new InvalidOperationException("The handler is not open.");
 
@@ -65,6 +65,9 @@ internal sealed class RequestHandler(IDatabase database, IJournalExport export, 
                 case RemoteCommand.ClearChat:
                     await chat.Clear(cancellation);
                     return response;
+                case RemoteCommand.UpdateServer:
+                    await updater.Update(cancellation);
+                    return response;
                 case RemoteCommand.Transcribe:
                     return response with { Transcript = await speech.Transcribe(Require(request.Data, "data"), cancellation) };
                 default:
@@ -80,5 +83,6 @@ internal sealed class RequestHandler(IDatabase database, IJournalExport export, 
     private T Require<T>(T? value, string name)
         where T : struct => value ?? throw new RequestException($"The request needs a {name}.");
 
-    private string Require(string? value, string name) => value ?? throw new RequestException($"The request needs a {name}.");
+    private string Require(string? value, string name)
+        => value ?? throw new RequestException($"The request needs a {name}.");
 }

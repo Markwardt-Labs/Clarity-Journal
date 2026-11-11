@@ -4,7 +4,8 @@ public sealed class ReminderScheduleTests
 {
     private readonly IReminderSchedule schedule = new IReminderSchedule.Factory().Create();
 
-    private DateTime At(string moment) => DateTime.Parse(moment, CultureInfo.InvariantCulture);
+    private DateTime At(string moment)
+        => DateTime.Parse(moment, CultureInfo.InvariantCulture);
 
     [Theory]
     [InlineData("2026-10-20 00:00", "2026-10-20 12:00")]

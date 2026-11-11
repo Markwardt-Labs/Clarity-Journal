@@ -1,4 +1,5 @@
 global using System.Collections.ObjectModel;
+global using System.Diagnostics;
 global using System.Globalization;
 global using System.Net;
 global using System.Net.Security;

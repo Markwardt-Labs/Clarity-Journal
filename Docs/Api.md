@@ -11,7 +11,7 @@ Models are plain records: `JournalEntry` (one per day, keyed by `Date`), `EntryD
 ## Flow
 
 1. The client opens a secure WebSocket to the server's port and sends a `HandshakeRequest` with the access key as the first line.
-2. The server answers with a `HandshakeResponse`. A wrong key or a malformed line gets `accepted: false` and the connection is closed; only a client that sends nothing within five seconds is closed without a reply.
+2. The server answers with a `HandshakeResponse`. An acceptance carries the server's version. A wrong key or a malformed line gets `accepted: false` and the connection is closed; only a client that sends nothing within five seconds is closed without a reply.
 3. The client sends `RemoteRequest` lines. Each carries a client-chosen `Id` and may overlap with others; the matching `RemoteResponse` echoes the `Id`, and a failure is an `Error` string, never a closed connection.
 4. The server pushes `RemoteResponse` lines with `Id` zero and an `Event` to every connected client: an entry changed (saved, deleted or given a title), summaries changed, a chat message arrived, Claude Code started or stopped answering, the chat was cleared or trimmed, or a run failed.
 
@@ -28,6 +28,10 @@ Clients can only read summaries (`GetSummaries`). The server writes them by itse
 `ListDigests` lists the days that have an entry, newest first, one page at a time: the `Limit` newest days before `Before` (the newest days when it is absent; 50 when `Limit` is absent, never more than 200). A page shorter than the limit is the last. An `EntryDigest` carries the date, the generated title and summary, and the start of the text on one line, but not the text, so a page of fifty days stays small however long the entries are, and a journal of decades never meets the message size limit. The title and summary are absent while the entry has none: the server writes them for a day only once it is over (see Entry titles), and writes them again after the text changed.
 
 `EntryChanged` carries the new digest of the day (absent when the entry was deleted) in the same push for all three causes, a save, a delete and a generated title, so a client that shows a list patches that one row from the event without asking again. A save of the same text keeps the title; a save of different text clears it.
+
+## Updating the server
+
+`UpdateServer` makes the server download the newest release from GitHub and restart as the new version. It answers once the download is done and the restart is scheduled, a second later, so the connection drops and the app reconnects; the version the handshake then reports is how the app sees that it worked. It fails with a message, and changes nothing, when there is no newer release or the download failed. A server too old to know the command closes the connection on it, which the app reads as "too old to update itself".
 
 ## Voice input
 

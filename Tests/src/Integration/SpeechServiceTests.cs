@@ -6,11 +6,14 @@ public sealed class SpeechServiceTests
 
     private readonly SpeechService service;
 
-    public SpeechServiceTests() => service = new SpeechService(engine.Object);
+    public SpeechServiceTests()
+        => service = new SpeechService(engine.Object);
 
-    private string Audio(int bytes = 4) => Convert.ToBase64String(new byte[bytes].Select((_, i) => (byte)(i + 1)).ToArray());
+    private string Audio(int bytes = 4)
+        => Convert.ToBase64String(new byte[bytes].Select((_, i) => (byte)(i + 1)).ToArray());
 
-    private void Use(string script) => service.Configure(new ServerConfig { Port = 1, Key = "k", SpeechCommand = "sh", SpeechArguments = ["-c", script, "speech", "{file}"] });
+    private void Use(string script)
+        => service.Configure(new ServerConfig { Port = 1, Key = "k", SpeechCommand = "sh", SpeechArguments = ["-c", script, "speech", "{file}"] });
 
     [Fact]
     public async Task Transcribe_RunsTheSpeechCommandOnTheRecordingAndAnswersItsTrimmedOutput()

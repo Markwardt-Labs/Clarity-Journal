@@ -10,7 +10,8 @@ public sealed class SummarySchedulerTests
 
     private readonly FixedTimeProvider time = new(new DateTimeOffset(2026, 10, 17, 10, 0, 0, TimeSpan.Zero));
 
-    private SummaryScheduler Create() => new(summarizer.Object, summaries.Object, new SummarySchedule(), time, Mock.Of<ILog>());
+    private SummaryScheduler Create()
+        => new(summarizer.Object, summaries.Object, new SummarySchedule(), time, Mock.Of<ILog>());
 
     [Fact]
     public async Task Run_NeverSummarized_RunsAtOnce()

@@ -13,20 +13,20 @@ internal interface IChatStore
     /// <param name="at">When the message was written.</param>
     /// <param name="cancellation">Cancels the write.</param>
     /// <returns>The stored message.</returns>
-    Task<ChatMessage> Add(ChatRole role, string text, DateTimeOffset at, CancellationToken cancellation);
+    Task<ChatMessage> Add(ChatRole role, string text, DateTimeOffset at, CancellationToken cancellation = default);
 
     /// <summary>
     /// Lists the whole chat.
     /// </summary>
     /// <param name="cancellation">Cancels the read.</param>
     /// <returns>The messages, oldest first.</returns>
-    Task<IReadOnlyList<ChatMessage>> List(CancellationToken cancellation);
+    Task<IReadOnlyList<ChatMessage>> List(CancellationToken cancellation = default);
 
     /// <summary>
     /// Deletes every message.
     /// </summary>
     /// <param name="cancellation">Cancels the write.</param>
-    Task Clear(CancellationToken cancellation);
+    Task Clear(CancellationToken cancellation = default);
 
     /// <summary>
     /// Deletes the messages written before a moment.
@@ -34,14 +34,14 @@ internal interface IChatStore
     /// <param name="cutoff">The moment; messages written at exactly this moment stay.</param>
     /// <param name="cancellation">Cancels the write.</param>
     /// <returns>How many messages were deleted.</returns>
-    Task<int> DeleteBefore(DateTimeOffset cutoff, CancellationToken cancellation);
+    Task<int> DeleteBefore(DateTimeOffset cutoff, CancellationToken cancellation = default);
 }
 
 /// <inheritdoc />
 internal sealed class ChatStore(IDatabase database) : IChatStore
 {
     /// <inheritdoc />
-    public async Task<ChatMessage> Add(ChatRole role, string text, DateTimeOffset at, CancellationToken cancellation)
+    public async Task<ChatMessage> Add(ChatRole role, string text, DateTimeOffset at, CancellationToken cancellation = default)
     {
         await using SqliteConnection connection = await database.Open(cancellation);
         await using SqliteCommand command = connection.CreateCommand();
@@ -54,7 +54,7 @@ internal sealed class ChatStore(IDatabase database) : IChatStore
     }
 
     /// <inheritdoc />
-    public async Task<IReadOnlyList<ChatMessage>> List(CancellationToken cancellation)
+    public async Task<IReadOnlyList<ChatMessage>> List(CancellationToken cancellation = default)
     {
         await using SqliteConnection connection = await database.Open(cancellation);
         await using SqliteCommand command = connection.CreateCommand();
@@ -77,7 +77,7 @@ internal sealed class ChatStore(IDatabase database) : IChatStore
     }
 
     /// <inheritdoc />
-    public async Task Clear(CancellationToken cancellation)
+    public async Task Clear(CancellationToken cancellation = default)
     {
         await using SqliteConnection connection = await database.Open(cancellation);
         await using SqliteCommand command = connection.CreateCommand();
@@ -86,7 +86,7 @@ internal sealed class ChatStore(IDatabase database) : IChatStore
     }
 
     /// <inheritdoc />
-    public async Task<int> DeleteBefore(DateTimeOffset cutoff, CancellationToken cancellation)
+    public async Task<int> DeleteBefore(DateTimeOffset cutoff, CancellationToken cancellation = default)
     {
         List<long> old = [.. (await List(cancellation)).Where(message => message.At < cutoff).Select(message => message.Id)];
 

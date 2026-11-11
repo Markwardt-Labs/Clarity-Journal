@@ -20,14 +20,15 @@ internal sealed class TestServer : IAsyncDisposable
 
     public string Fingerprint { get; private set; } = string.Empty;
 
-    public ConnectionSettings Settings(string key = "secret", string? fingerprint = null) => new() { Host = "127.0.0.1", Port = Port, AccessKey = key, Fingerprint = fingerprint };
+    public ConnectionSettings Settings(string key = "secret", string? fingerprint = null)
+        => new() { Host = "127.0.0.1", Port = Port, AccessKey = key, Fingerprint = fingerprint };
 
-    public static async Task<TestServer> Start(IClaudeRunner claude, TimeProvider? time = null, string? dataFolder = null, Func<ServerConfig, ServerConfig>? configure = null, bool titling = false)
+    public static async Task<TestServer> Start(IClaudeRunner claude, TimeProvider? time = null, string? dataFolder = null, Func<ServerConfig, ServerConfig>? configure = null, bool titling = false, IServerUpdater? updater = null, string? version = null)
     {
         TempFolder? temp = dataFolder is null ? new TempFolder() : null;
         ServerConfig config = new() { Port = 0, Key = "secret", DataFolder = dataFolder ?? temp!.Combine("data"), SpeechModel = string.Empty };
         TestServer server = new(configure?.Invoke(config) ?? config, temp);
-        await server.Open(claude, time ?? TimeProvider.System, titling);
+        await server.Open(claude, time ?? TimeProvider.System, titling, updater ?? Mock.Of<IServerUpdater>(), version);
         return server;
     }
 
@@ -38,8 +39,12 @@ internal sealed class TestServer : IAsyncDisposable
         temp?.Dispose();
     }
 
-    private async Task Open(IClaudeRunner claude, TimeProvider time, bool titling)
+    private async Task Open(IClaudeRunner claude, TimeProvider time, bool titling, IServerUpdater updater, string? version)
     {
+        Mock<IAppInfo> named = new();
+        named.SetupGet(target => target.Name).Returns("Clarity Journal");
+        named.SetupGet(target => target.Version).Returns(version ?? new IAppInfo.Factory().Create(typeof(TestServer).Assembly).Version);
+        IAppInfo info = named.Object;
         ILog log = Mock.Of<ILog>();
         EventHub events = new();
         Database database = new();
@@ -50,9 +55,9 @@ internal sealed class TestServer : IAsyncDisposable
         Prompts prompts = new();
         Summarizer summarizer = new(entries, summaryStore, claude, prompts, export, events, time, log);
         ChatService chat = new(new ChatStore(database), meta, claude, prompts, export, events, time, log);
-        RequestHandler handler = new(database, export, new JournalService(entries, export, events, time), summaryStore, chat, new SpeechService(new WhisperEngine()));
+        RequestHandler handler = new(database, export, new JournalService(entries, export, events, time), summaryStore, chat, new SpeechService(new WhisperEngine()), updater);
         await handler.Open(Config, stopping.Token);
-        ConnectionServer server = new(new Handshake(), new IMessageChannel.Factory(), new WebSocketUpgrade(), new CertificateProvider(), handler, events, log);
+        ConnectionServer server = new(new Handshake(info), new IMessageChannel.Factory(), new WebSocketUpgrade(), new CertificateProvider(), handler, events, log);
         TaskCompletionSource<int> listening = new();
         TaskCompletionSource<string> certified = new();
         server.Listening += listening.SetResult;

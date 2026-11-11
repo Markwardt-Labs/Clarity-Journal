@@ -4,13 +4,14 @@ internal sealed class EventLog
 {
     private readonly List<RemoteEvent> events = [];
 
-    public EventLog(IServerConnection connection) => connection.EventReceived += remoteEvent =>
-    {
-        lock (events)
+    public EventLog(IServerConnection connection)
+        => connection.EventReceived += remoteEvent =>
         {
-            events.Add(remoteEvent);
-        }
-    };
+            lock (events)
+            {
+                events.Add(remoteEvent);
+            }
+        };
 
     public List<RemoteEvent> All
     {

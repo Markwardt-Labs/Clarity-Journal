@@ -11,7 +11,7 @@ internal interface ISummarizer
     /// <param name="config">The server settings.</param>
     /// <param name="cancellation">Cancels the update.</param>
     /// <returns><see langword="true" /> if every summary is up to date afterward; <see langword="false" /> if Claude Code or the storage failed, in which case the failure was reported to the clients and a later run continues where this one stopped.</returns>
-    Task<bool> Run(ServerConfig config, CancellationToken cancellation);
+    Task<bool> Run(ServerConfig config, CancellationToken cancellation = default);
 }
 
 /// <inheritdoc />
@@ -20,7 +20,7 @@ internal sealed class Summarizer(IEntryStore entries, ISummaryStore summaries, I
     private readonly SummaryKind[] kinds = [SummaryKind.Week, SummaryKind.Month, SummaryKind.Year, SummaryKind.Lifetime];
 
     /// <inheritdoc />
-    public async Task<bool> Run(ServerConfig config, CancellationToken cancellation)
+    public async Task<bool> Run(ServerConfig config, CancellationToken cancellation = default)
     {
         try
         {
@@ -57,7 +57,7 @@ internal sealed class Summarizer(IEntryStore entries, ISummaryStore summaries, I
         }
     }
 
-    private async Task Update(ServerConfig config, SummaryPeriod period, IEnumerable<RevisedEntry> pending, CancellationToken cancellation)
+    private async Task Update(ServerConfig config, SummaryPeriod period, IEnumerable<RevisedEntry> pending, CancellationToken cancellation = default)
     {
         StoredSummary? stored = await summaries.Get(period.Kind, period.Id, cancellation);
         long through = stored?.ThroughRevision ?? 0;

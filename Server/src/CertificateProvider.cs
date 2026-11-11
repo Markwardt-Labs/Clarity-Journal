@@ -12,7 +12,7 @@ internal interface ICertificateProvider
     /// <param name="cancellation">Cancels the load.</param>
     /// <returns>The certificate, with its private key.</returns>
     /// <exception cref="InvalidDataException">The configured certificate file is missing or cannot be read.</exception>
-    Task<X509Certificate2> Load(ServerConfig config, CancellationToken cancellation);
+    Task<X509Certificate2> Load(ServerConfig config, CancellationToken cancellation = default);
 }
 
 /// <inheritdoc />
@@ -21,7 +21,7 @@ internal sealed class CertificateProvider : ICertificateProvider
     private readonly string generatedName = "certificate.pfx";
 
     /// <inheritdoc />
-    public async Task<X509Certificate2> Load(ServerConfig config, CancellationToken cancellation)
+    public async Task<X509Certificate2> Load(ServerConfig config, CancellationToken cancellation = default)
     {
         if (config.CertificateFile is { Length: > 0 } configured)
         {
@@ -50,7 +50,7 @@ internal sealed class CertificateProvider : ICertificateProvider
         return await Read(path, null, cancellation);
     }
 
-    private async Task<X509Certificate2> Read(string path, string? password, CancellationToken cancellation)
+    private async Task<X509Certificate2> Read(string path, string? password, CancellationToken cancellation = default)
     {
         try
         {

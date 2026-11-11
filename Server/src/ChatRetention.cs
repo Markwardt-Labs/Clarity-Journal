@@ -11,14 +11,14 @@ internal interface IChatRetention
     /// <param name="config">The server settings.</param>
     /// <param name="cancellation">Stops the loop.</param>
     /// <returns>A task that completes when cancelled.</returns>
-    Task Run(ServerConfig config, CancellationToken cancellation);
+    Task Run(ServerConfig config, CancellationToken cancellation = default);
 }
 
 /// <inheritdoc />
 internal sealed class ChatRetention(IChatService chat, TimeProvider time, ILog log) : IChatRetention
 {
     /// <inheritdoc />
-    public async Task Run(ServerConfig config, CancellationToken cancellation)
+    public async Task Run(ServerConfig config, CancellationToken cancellation = default)
     {
         try
         {

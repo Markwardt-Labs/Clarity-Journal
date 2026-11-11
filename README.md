@@ -1,10 +1,11 @@
 # Clarity Journal
 
+[![Release](https://img.shields.io/github/v/release/Markwardt-Labs/Clarity-Journal)](https://github.com/Markwardt-Labs/Clarity-Journal/releases/latest)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Build](https://github.com/Markwardt-Labs/Clarity-Journal/actions/workflows/build.yml/badge.svg)](https://github.com/Markwardt-Labs/Clarity-Journal/actions/workflows/build.yml)
 ![Coverage](.github/badges/badge_linecoverage.svg)
 
-Clarity Journal is a private journalling app. An Android app writes one journal entry per day to a command line server on your own computer, which keeps every entry in a SQLite database. Every Friday evening the server asks your local Claude Code to write week, month, year and lifetime summaries, building each one on the previous summary and only the entries added since, Each finished day also gets a short AI written title and summary, which the app shows in a list of entries. The app shows the summaries and a chat in which you can ask Claude Code questions about your entries. The phone reminds you at noon and at 8 pm every day to write. Entries and questions can be spoken: the phone records, and the server turns the speech into text on your own machine. Built on .NET 10 and [Avalonia](https://avaloniaui.net/); see [THIRD-PARTY-NOTICES.txt](THIRD-PARTY-NOTICES.txt) for redistributed dependency licenses.
+Clarity Journal is a private journalling app. An Android app writes one journal entry per day to a command line server on your own computer, which keeps every entry in a SQLite database. Every Friday evening the server asks your local Claude Code to write week, month, year and life summaries, building each one on the previous summary and only the entries added since. Each finished day also gets a short AI written title and summary, which the app shows in a list of entries. The app shows the summaries and a chat in which you can ask Claude Code questions about your entries. The phone reminds you at noon and at 8 pm every day to write. Entries and questions can be spoken: the phone records, and the server turns the speech into text on your own machine. Built on .NET 10 and [Avalonia](https://avaloniaui.net/); see [THIRD-PARTY-NOTICES.txt](THIRD-PARTY-NOTICES.txt) for redistributed dependency licenses.
 
 ## Requirements
 
@@ -30,6 +31,10 @@ Create a `config.json` next to the server executable:
 ```
 
 Start the server, which prints its port and certificate fingerprint, then open the app, enter the server's address, the port (52681 unless changed) and the key, and tap Connect.
+
+## Updating
+
+When a newer release exists, the app offers an update in Options. Confirming updates the server first, which restarts, and then the app.
 
 ## Documentation
 

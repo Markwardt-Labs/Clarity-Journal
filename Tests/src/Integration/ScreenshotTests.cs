@@ -99,6 +99,129 @@ public sealed class ScreenshotTests(HeadlessFixture fixture)
     }
 
     [Fact]
+    public async Task UpdateScreens_RenderInTheThemeAndTheUpdatingScreenTakesOverTheWholeApp()
+    {
+        Mock<IServerConnection> connection = new();
+        connection.SetupGet(target => target.ServerVersion).Returns("1.0.0");
+        connection.SetupGet(target => target.Fingerprint).Returns("ABCD");
+        connection.Setup(target => target.GetEntry(It.IsAny<DateOnly>(), It.IsAny<CancellationToken>())).ReturnsAsync((JournalEntry?)null);
+        connection.Setup(target => target.GetSummaries(It.IsAny<SummaryKind>(), It.IsAny<CancellationToken>())).ReturnsAsync([]);
+        connection.Setup(target => target.GetChat(It.IsAny<CancellationToken>())).ReturnsAsync(new ChatHistory { Messages = [], Working = false });
+        ConnectionSettings saved = new() { Host = "host", Port = 52681, AccessKey = "key", Fingerprint = "ABCD" };
+        Mock<IServerConnection.IFactory> factory = new();
+        factory.Setup(target => target.Connect(saved, It.IsAny<CancellationToken>())).ReturnsAsync(connection.Object);
+        Mock<ISettingsStore> store = new();
+        store.Setup(target => target.Load(It.IsAny<CancellationToken>())).ReturnsAsync(saved);
+        Mock<IReleaseFeed> feed = new();
+        feed.Setup(target => target.Latest(It.IsAny<CancellationToken>())).ReturnsAsync(new ReleaseInfo { Version = new AppVersion { Major = 1, Minor = 1, Patch = 0 }, Assets = [] });
+        TaskCompletionSource gate = new();
+        Mock<IClientUpdater> updater = new();
+        updater.SetupGet(target => target.IsSupported).Returns(true);
+        updater.Setup(target => target.Install(It.IsAny<ReleaseInfo>(), It.IsAny<IProgress<double>>(), It.IsAny<CancellationToken>())).Returns(async (ReleaseInfo _, IProgress<double> progress, CancellationToken _) =>
+        {
+            progress.Report(0.45);
+            await gate.Task;
+        });
+
+        List<string> problems = await fixture.RunAsync(async () =>
+        {
+            List<string> found = [];
+            MainViewModel model = new(new IAppInfo.Factory().Create(typeof(ScreenshotTests).Assembly), factory.Object, store.Object, null, feed.Object, updater.Object, TimeSpan.FromMilliseconds(20));
+            Window window = new() { Width = 390, Height = 800, Content = new MainView { DataContext = model } };
+            window.Show();
+            await model.Start();
+            SessionViewModel session = (SessionViewModel)model.Current!;
+
+            if (!await Until(() => session.Update!.IsAvailable))
+            {
+                return ["the update was never offered"];
+            }
+
+            session.SelectTabCommand.Execute(AppTab.Settings);
+            Avalonia.Media.Imaging.WriteableBitmap options = Capture(window, "11-options-update");
+            Button offer = window.GetVisualDescendants().OfType<Button>().FirstOrDefault(button => button.Content as string == "Update to 1.1.0")!;
+
+            if (offer is not { IsEffectivelyVisible: true })
+            {
+                found.Add("Options should offer 'Update to 1.1.0' when a newer release exists");
+            }
+
+            session.Update!.BeginCommand.Execute(null);
+            Capture(window, "12-update-confirm");
+
+            if (window.GetVisualDescendants().OfType<UpdateDialogView>().Single() is not { IsEffectivelyVisible: true })
+            {
+                found.Add("starting the update should ask for confirmation first");
+            }
+
+            session.Update.ConfirmCommand.Execute(null);
+
+            if (!await Until(() => model.Current is UpdateViewModel && session.Update.Progress > 0))
+            {
+                found.Add("confirming should replace the whole app with the updating screen");
+                window.Close();
+                return found;
+            }
+
+            Avalonia.Media.Imaging.WriteableBitmap updating = Capture(window, "13-updating");
+
+            if (!Near(Pixel(updating, 4, 4), "9A95FC") || !Near(Pixel(updating, 4, 795), "E98EB7"))
+            {
+                found.Add("the updating screen should use the violet to pink welcome gradient");
+            }
+
+            if (window.GetVisualDescendants().OfType<ProgressBar>().SingleOrDefault() is not { IsEffectivelyVisible: true, Value: 0.45 })
+            {
+                found.Add("the updating screen should show the download progress");
+            }
+
+            if (window.GetVisualDescendants().OfType<Button>().Any(button => button.IsEffectivelyVisible && button.Classes.Contains("tab")))
+            {
+                found.Add("the tab bar must not show while updating");
+            }
+
+            if (window.GetVisualDescendants().OfType<Button>().Any(button => button.IsEffectivelyVisible && button.Content as string == "Close"))
+            {
+                found.Add("the updating screen cannot be left while the download runs");
+            }
+
+            gate.SetResult();
+            await Until(() => session.Update.Phase == UpdatePhase.Finished);
+            Capture(window, "14-update-finished");
+            session.Update.CloseCommand.Execute(null);
+
+            if (!ReferenceEquals(model.Current, session))
+            {
+                found.Add("closing the updating screen should return to where the user was");
+            }
+
+            window.Close();
+            return found;
+        });
+
+        Assert.Empty(problems);
+    }
+
+    [Fact]
+    public async Task JournalHeader_ALongDateOnANarrowPhoneWrapsAfterTheCommaAndStaysCentered()
+    {
+        Mock<IServerConnection> connection = new();
+        connection.Setup(target => target.GetEntry(It.IsAny<DateOnly>(), It.IsAny<CancellationToken>())).ReturnsAsync((JournalEntry?)null);
+        Mock<IVoiceRecorder> recorder = new();
+
+        await fixture.RunAsync(async () =>
+        {
+            JournalViewModel model = new(connection.Object, () => new DateOnly(2026, 9, 30), recorder.Object);
+            await model.Load();
+            Window window = new() { Width = 360, Height = 640, Content = new JournalView { DataContext = model } };
+            window.Show();
+            Capture(window, "2d-journal-long-date-narrow");
+            window.Close();
+            return 0;
+        });
+    }
+
+    [Fact]
     public async Task EveryScreen_RendersAgainstARealServerInThePastelTheme()
     {
         DateOnly today = DateOnly.FromDateTime(DateTime.Now);

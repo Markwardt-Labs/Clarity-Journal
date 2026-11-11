@@ -11,7 +11,7 @@ internal interface IEntryTitler
     /// <param name="config">The server settings.</param>
     /// <param name="cancellation">Cancels the run.</param>
     /// <returns><see langword="true" /> if every entry was dealt with; <see langword="false" /> if Claude Code or the storage failed, in which case the run stopped and a later run continues with what is still missing. An answer that cannot be read as a title skips that entry only.</returns>
-    Task<bool> Run(ServerConfig config, CancellationToken cancellation);
+    Task<bool> Run(ServerConfig config, CancellationToken cancellation = default);
 }
 
 /// <inheritdoc />
@@ -22,7 +22,7 @@ internal sealed class EntryTitler(IEntryStore entries, IClaudeRunner claude, IPr
     private readonly int maxSummary = 300;
 
     /// <inheritdoc />
-    public async Task<bool> Run(ServerConfig config, CancellationToken cancellation)
+    public async Task<bool> Run(ServerConfig config, CancellationToken cancellation = default)
     {
         try
         {
@@ -90,7 +90,8 @@ internal sealed class EntryTitler(IEntryStore entries, IClaudeRunner claude, IPr
         }
     }
 
-    private string Clean(string text) => string.Join(' ', text.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries)).Trim('"', '\'', '“', '”').Trim();
+    private string Clean(string text)
+        => string.Join(' ', text.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries)).Trim('"', '\'', '“', '”').Trim();
 
     private string Limit(string text, int length) => text.Length <= length ? text : text[..length].TrimEnd() + "...";
 }

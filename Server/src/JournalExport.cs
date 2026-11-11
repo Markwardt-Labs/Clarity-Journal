@@ -15,14 +15,14 @@ internal interface IJournalExport
     /// </summary>
     /// <param name="dataFolder">The server's data folder; the files go in its <c>export</c> folder.</param>
     /// <param name="cancellation">Cancels the rebuild.</param>
-    Task Open(string dataFolder, CancellationToken cancellation);
+    Task Open(string dataFolder, CancellationToken cancellation = default);
 
     /// <summary>
     /// Writes the file of an entry.
     /// </summary>
     /// <param name="entry">The entry.</param>
     /// <param name="cancellation">Cancels the write.</param>
-    Task WriteEntry(JournalEntry entry, CancellationToken cancellation);
+    Task WriteEntry(JournalEntry entry, CancellationToken cancellation = default);
 
     /// <summary>
     /// Deletes the file of an entry.
@@ -35,7 +35,7 @@ internal interface IJournalExport
     /// </summary>
     /// <param name="summary">The summary.</param>
     /// <param name="cancellation">Cancels the write.</param>
-    Task WriteSummary(Summary summary, CancellationToken cancellation);
+    Task WriteSummary(Summary summary, CancellationToken cancellation = default);
 }
 
 /// <inheritdoc />
@@ -47,7 +47,7 @@ internal sealed class JournalExport(IEntryStore entries, ISummaryStore summaries
     public string Folder { get; private set; } = string.Empty;
 
     /// <inheritdoc />
-    public async Task Open(string dataFolder, CancellationToken cancellation)
+    public async Task Open(string dataFolder, CancellationToken cancellation = default)
     {
         Folder = Path.Combine(dataFolder, "export");
 
@@ -70,33 +70,39 @@ internal sealed class JournalExport(IEntryStore entries, ISummaryStore summaries
     }
 
     /// <inheritdoc />
-    public Task WriteEntry(JournalEntry entry, CancellationToken cancellation) => Write(EntryPath(entry.Date), $"# {entry.Date.ToString("dddd, MMMM d, yyyy", CultureInfo.InvariantCulture)}\n\n{entry.Text}\n", cancellation);
+    public Task WriteEntry(JournalEntry entry, CancellationToken cancellation = default)
+        => Write(EntryPath(entry.Date), $"# {entry.Date.ToString("dddd, MMMM d, yyyy", CultureInfo.InvariantCulture)}\n\n{entry.Text}\n", cancellation);
 
     /// <inheritdoc />
-    public void DeleteEntry(DateOnly date) => File.Delete(EntryPath(date));
+    public void DeleteEntry(DateOnly date)
+        => File.Delete(EntryPath(date));
 
     /// <inheritdoc />
-    public Task WriteSummary(Summary summary, CancellationToken cancellation) => Write(SummaryPath(summary), $"# {Title(summary)}\n\n{summary.Text}\n", cancellation);
+    public Task WriteSummary(Summary summary, CancellationToken cancellation = default)
+        => Write(SummaryPath(summary), $"# {Title(summary)}\n\n{summary.Text}\n", cancellation);
 
-    private string EntryPath(DateOnly date) => Path.Combine(Folder, "entries", date.Year.ToString("0000", CultureInfo.InvariantCulture), $"{date:yyyy-MM-dd}.md");
+    private string EntryPath(DateOnly date)
+        => Path.Combine(Folder, "entries", date.Year.ToString("0000", CultureInfo.InvariantCulture), $"{date:yyyy-MM-dd}.md");
 
-    private string SummaryPath(Summary summary) => summary.Kind switch
-    {
-        SummaryKind.Week => Path.Combine(Folder, "summaries", "weeks", $"{summary.Period}.md"),
-        SummaryKind.Month => Path.Combine(Folder, "summaries", "months", $"{summary.Period}.md"),
-        SummaryKind.Year => Path.Combine(Folder, "summaries", "years", $"{summary.Period}.md"),
-        _ => Path.Combine(Folder, "summaries", "lifetime.md")
-    };
+    private string SummaryPath(Summary summary)
+        => summary.Kind switch
+        {
+            SummaryKind.Week => Path.Combine(Folder, "summaries", "weeks", $"{summary.Period}.md"),
+            SummaryKind.Month => Path.Combine(Folder, "summaries", "months", $"{summary.Period}.md"),
+            SummaryKind.Year => Path.Combine(Folder, "summaries", "years", $"{summary.Period}.md"),
+            _ => Path.Combine(Folder, "summaries", "lifetime.md")
+        };
 
-    private string Title(Summary summary) => summary.Kind switch
-    {
-        SummaryKind.Week => $"Summary of the week {summary.Start:yyyy-MM-dd} to {summary.End:yyyy-MM-dd}",
-        SummaryKind.Month => $"Summary of {summary.Start.ToString("MMMM yyyy", CultureInfo.InvariantCulture)}",
-        SummaryKind.Year => $"Summary of {summary.Period}",
-        _ => "Summary of the whole journal"
-    };
+    private string Title(Summary summary)
+        => summary.Kind switch
+        {
+            SummaryKind.Week => $"Summary of the week {summary.Start:yyyy-MM-dd} to {summary.End:yyyy-MM-dd}",
+            SummaryKind.Month => $"Summary of {summary.Start.ToString("MMMM yyyy", CultureInfo.InvariantCulture)}",
+            SummaryKind.Year => $"Summary of {summary.Period}",
+            _ => "Summary of the whole journal"
+        };
 
-    private async Task Write(string path, string content, CancellationToken cancellation)
+    private async Task Write(string path, string content, CancellationToken cancellation = default)
     {
         await writing.WaitAsync(cancellation);
 

@@ -13,14 +13,14 @@ internal interface IClaudeRunner
     /// <param name="cancellation">Cancels the run, which also ends the process.</param>
     /// <returns>The text of the answer.</returns>
     /// <exception cref="ClaudeException">Claude Code could not be started, failed or took longer than the time limit.</exception>
-    Task<string> Run(ServerConfig config, ClaudeRequest request, CancellationToken cancellation);
+    Task<string> Run(ServerConfig config, ClaudeRequest request, CancellationToken cancellation = default);
 }
 
 /// <inheritdoc />
 internal sealed class ClaudeRunner : IClaudeRunner
 {
     /// <inheritdoc />
-    public async Task<string> Run(ServerConfig config, ClaudeRequest request, CancellationToken cancellation)
+    public async Task<string> Run(ServerConfig config, ClaudeRequest request, CancellationToken cancellation = default)
     {
         ProcessStartInfo start = new(config.ClaudeCommand)
         {

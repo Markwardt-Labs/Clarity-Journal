@@ -10,22 +10,22 @@ internal interface IChatService
     /// </summary>
     /// <param name="cancellation">Cancels the read.</param>
     /// <returns>The messages and whether an answer is being written.</returns>
-    Task<ChatHistory> Get(CancellationToken cancellation);
+    Task<ChatHistory> Get(CancellationToken cancellation = default);
 
     /// <summary>
     /// Adds a question to the chat and starts answering it in the background; the answer arrives as an event. Questions asked while one is answered wait their turn.
     /// </summary>
     /// <param name="config">The server settings.</param>
     /// <param name="text">The question; it must not be blank.</param>
-    /// <param name="lifetime">Ends the answering when the server stops.</param>
+    /// <param name="cancellation">Ends the answering when the server stops.</param>
     /// <exception cref="RequestException">The question is blank.</exception>
-    Task Send(ServerConfig config, string text, CancellationToken lifetime);
+    Task Send(ServerConfig config, string text, CancellationToken cancellation = default);
 
     /// <summary>
     /// Deletes the chat and the Claude Code conversation behind it.
     /// </summary>
     /// <param name="cancellation">Cancels the write.</param>
-    Task Clear(CancellationToken cancellation);
+    Task Clear(CancellationToken cancellation = default);
 
     /// <summary>
     /// Deletes the messages written before a moment, which keeps the chat to the last few days. When none remain, the Claude Code conversation behind the chat is forgotten too, so the next question starts fresh. Waits for an answer being written.
@@ -33,7 +33,7 @@ internal interface IChatService
     /// <param name="cutoff">The moment; older messages are deleted.</param>
     /// <param name="cancellation">Cancels the write.</param>
     /// <returns>How many messages were deleted.</returns>
-    Task<int> Trim(DateTimeOffset cutoff, CancellationToken cancellation);
+    Task<int> Trim(DateTimeOffset cutoff, CancellationToken cancellation = default);
 }
 
 /// <inheritdoc />
@@ -48,17 +48,18 @@ internal sealed class ChatService(IChatStore chats, IMetaStore meta, IClaudeRunn
     private int waiting;
 
     /// <inheritdoc />
-    public async Task<ChatHistory> Get(CancellationToken cancellation) => new() { Messages = await chats.List(cancellation), Working = Volatile.Read(ref waiting) > 0 };
+    public async Task<ChatHistory> Get(CancellationToken cancellation = default)
+        => new() { Messages = await chats.List(cancellation), Working = Volatile.Read(ref waiting) > 0 };
 
     /// <inheritdoc />
-    public async Task Send(ServerConfig config, string text, CancellationToken lifetime)
+    public async Task Send(ServerConfig config, string text, CancellationToken cancellation = default)
     {
         if (string.IsNullOrWhiteSpace(text))
         {
             throw new RequestException("The question is empty.");
         }
 
-        ChatMessage question = await chats.Add(ChatRole.User, text.Trim(), time.GetUtcNow(), lifetime);
+        ChatMessage question = await chats.Add(ChatRole.User, text.Trim(), time.GetUtcNow(), cancellation);
         Publish(question);
 
         if (Interlocked.Increment(ref waiting) == 1)
@@ -66,11 +67,11 @@ internal sealed class ChatService(IChatStore chats, IMetaStore meta, IClaudeRunn
             events.Publish(new RemoteEvent { Kind = RemoteEventKind.ChatWorkingChanged, Working = true });
         }
 
-        _ = Answer(config, question.Text, lifetime);
+        _ = Answer(config, question.Text, cancellation);
     }
 
     /// <inheritdoc />
-    public async Task Clear(CancellationToken cancellation)
+    public async Task Clear(CancellationToken cancellation = default)
     {
         await turn.WaitAsync(cancellation);
 
@@ -88,7 +89,7 @@ internal sealed class ChatService(IChatStore chats, IMetaStore meta, IClaudeRunn
     }
 
     /// <inheritdoc />
-    public async Task<int> Trim(DateTimeOffset cutoff, CancellationToken cancellation)
+    public async Task<int> Trim(DateTimeOffset cutoff, CancellationToken cancellation = default)
     {
         await turn.WaitAsync(cancellation);
 
@@ -114,13 +115,14 @@ internal sealed class ChatService(IChatStore chats, IMetaStore meta, IClaudeRunn
         }
     }
 
-    private void Publish(ChatMessage message) => events.Publish(new RemoteEvent { Kind = RemoteEventKind.ChatMessageAdded, Message = message });
+    private void Publish(ChatMessage message)
+        => events.Publish(new RemoteEvent { Kind = RemoteEventKind.ChatMessageAdded, Message = message });
 
-    private async Task Answer(ServerConfig config, string question, CancellationToken lifetime)
+    private async Task Answer(ServerConfig config, string question, CancellationToken cancellation = default)
     {
         try
         {
-            await turn.WaitAsync(lifetime);
+            await turn.WaitAsync(cancellation);
 
             try
             {
@@ -128,7 +130,7 @@ internal sealed class ChatService(IChatStore chats, IMetaStore meta, IClaudeRunn
 
                 try
                 {
-                    reply = await Ask(config, question, lifetime);
+                    reply = await Ask(config, question, cancellation);
                 }
                 catch (ClaudeException exception)
                 {
@@ -136,14 +138,14 @@ internal sealed class ChatService(IChatStore chats, IMetaStore meta, IClaudeRunn
                     reply = $"I could not answer that: {exception.Message}";
                 }
 
-                Publish(await chats.Add(ChatRole.Assistant, reply, time.GetUtcNow(), lifetime));
+                Publish(await chats.Add(ChatRole.Assistant, reply, time.GetUtcNow(), cancellation));
             }
             finally
             {
                 turn.Release();
             }
         }
-        catch (OperationCanceledException) when (lifetime.IsCancellationRequested)
+        catch (OperationCanceledException) when (cancellation.IsCancellationRequested)
         {
         }
         finally
@@ -155,26 +157,26 @@ internal sealed class ChatService(IChatStore chats, IMetaStore meta, IClaudeRunn
         }
     }
 
-    private async Task<string> Ask(ServerConfig config, string question, CancellationToken lifetime)
+    private async Task<string> Ask(ServerConfig config, string question, CancellationToken cancellation = default)
     {
-        string? stored = await meta.Get(sessionKey, lifetime);
+        string? stored = await meta.Get(sessionKey, cancellation);
         bool resume = Guid.TryParse(stored, out Guid existing);
         Guid session = resume ? existing : Guid.NewGuid();
 
         try
         {
-            string reply = await claude.Run(config, new ClaudeRequest { Prompt = question, SystemPrompt = prompts.ChatSystem, Folder = export.Folder, Tools = tools, Session = session, Resume = resume }, lifetime);
+            string reply = await claude.Run(config, new ClaudeRequest { Prompt = question, SystemPrompt = prompts.ChatSystem, Folder = export.Folder, Tools = tools, Session = session, Resume = resume }, cancellation);
 
             if (!resume)
             {
-                await meta.Set(sessionKey, session.ToString(), lifetime);
+                await meta.Set(sessionKey, session.ToString(), cancellation);
             }
 
             return reply;
         }
         catch (ClaudeException exception) when (resume && exception.Message.Contains("No conversation found", StringComparison.OrdinalIgnoreCase))
         {
-            await meta.Remove(sessionKey, lifetime);
+            await meta.Remove(sessionKey, cancellation);
             throw;
         }
     }

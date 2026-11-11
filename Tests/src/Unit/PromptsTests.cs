@@ -4,7 +4,8 @@ public sealed class PromptsTests
 {
     private readonly Prompts prompts = new();
 
-    private JournalEntry Entry(string date, string text) => new() { Date = DateOnly.Parse(date, CultureInfo.InvariantCulture), Text = text, UpdatedAt = DateTimeOffset.UnixEpoch };
+    private JournalEntry Entry(string date, string text)
+        => new() { Date = DateOnly.Parse(date, CultureInfo.InvariantCulture), Text = text, UpdatedAt = DateTimeOffset.UnixEpoch };
 
     [Fact]
     public void Summary_WithoutPrevious_SaysItIsTheFirstAndListsTheEntriesWithTheirWeekday()

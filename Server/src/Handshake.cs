@@ -12,7 +12,7 @@ internal interface IHandshake
     /// <param name="accessKey">The key the client must supply.</param>
     /// <param name="cancellation">Cancels the handshake.</param>
     /// <returns>How the handshake ended; the client is answered in every case except <see cref="HandshakeOutcome.TimedOut" />.</returns>
-    Task<HandshakeOutcome> Perform(Stream stream, string accessKey, CancellationToken cancellation);
+    Task<HandshakeOutcome> Perform(Stream stream, string accessKey, CancellationToken cancellation = default);
 }
 
 /// <summary>
@@ -42,16 +42,17 @@ internal enum HandshakeOutcome
 }
 
 /// <inheritdoc />
-internal sealed class Handshake : IHandshake
+/// <param name="info">Identifies the server, whose version an acceptance carries.</param>
+internal sealed class Handshake(IAppInfo info) : IHandshake
 {
     private readonly int maxLength = 1024;
 
-    private readonly JsonSerializerOptions options = new() { PropertyNamingPolicy = JsonNamingPolicy.CamelCase };
+    private readonly JsonSerializerOptions options = new() { PropertyNamingPolicy = JsonNamingPolicy.CamelCase, DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull };
 
     private readonly TimeSpan timeout = TimeSpan.FromSeconds(5);
 
     /// <inheritdoc />
-    public async Task<HandshakeOutcome> Perform(Stream stream, string accessKey, CancellationToken cancellation)
+    public async Task<HandshakeOutcome> Perform(Stream stream, string accessKey, CancellationToken cancellation = default)
     {
         using CancellationTokenSource limit = CancellationTokenSource.CreateLinkedTokenSource(cancellation);
         limit.CancelAfter(timeout);
@@ -67,7 +68,7 @@ internal sealed class Handshake : IHandshake
             return HandshakeOutcome.TimedOut;
         }
 
-        await stream.WriteAsync(Encoding.UTF8.GetBytes(JsonSerializer.Serialize(new HandshakeResponse { Accepted = outcome == HandshakeOutcome.Accepted }, options) + "\n"), cancellation);
+        await stream.WriteAsync(Encoding.UTF8.GetBytes(JsonSerializer.Serialize(new HandshakeResponse { Accepted = outcome == HandshakeOutcome.Accepted, Version = outcome == HandshakeOutcome.Accepted ? info.Version : null }, options) + "\n"), cancellation);
         await stream.FlushAsync(cancellation);
         return outcome;
     }
@@ -89,7 +90,7 @@ internal sealed class Handshake : IHandshake
         }
     }
 
-    private async Task<byte[]?> ReadLine(Stream stream, CancellationToken cancellation)
+    private async Task<byte[]?> ReadLine(Stream stream, CancellationToken cancellation = default)
     {
         List<byte> line = [];
         byte[] buffer = new byte[1];

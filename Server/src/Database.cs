@@ -10,7 +10,7 @@ internal interface IDatabase
     /// </summary>
     /// <param name="folder">The folder that holds the database file; created when missing.</param>
     /// <param name="cancellation">Cancels the setup.</param>
-    Task Initialize(string folder, CancellationToken cancellation);
+    Task Initialize(string folder, CancellationToken cancellation = default);
 
     /// <summary>
     /// Opens a connection to the database.
@@ -18,7 +18,7 @@ internal interface IDatabase
     /// <param name="cancellation">Cancels the open.</param>
     /// <returns>The open connection, which the caller disposes.</returns>
     /// <exception cref="InvalidOperationException"><see cref="Initialize" /> has not run.</exception>
-    Task<SqliteConnection> Open(CancellationToken cancellation);
+    Task<SqliteConnection> Open(CancellationToken cancellation = default);
 }
 
 /// <inheritdoc />
@@ -61,7 +61,7 @@ internal sealed class Database : IDatabase
     private string connectionString = string.Empty;
 
     /// <inheritdoc />
-    public async Task Initialize(string folder, CancellationToken cancellation)
+    public async Task Initialize(string folder, CancellationToken cancellation = default)
     {
         Directory.CreateDirectory(folder);
         connectionString = new SqliteConnectionStringBuilder { DataSource = Path.Combine(folder, "journal.db") }.ToString();
@@ -76,7 +76,7 @@ internal sealed class Database : IDatabase
     }
 
     /// <inheritdoc />
-    public async Task<SqliteConnection> Open(CancellationToken cancellation)
+    public async Task<SqliteConnection> Open(CancellationToken cancellation = default)
     {
         if (connectionString.Length == 0)
         {
@@ -88,7 +88,7 @@ internal sealed class Database : IDatabase
         return connection;
     }
 
-    private async Task Migrate(SqliteConnection connection, CancellationToken cancellation)
+    private async Task Migrate(SqliteConnection connection, CancellationToken cancellation = default)
     {
         List<string> columns = [];
 
